@@ -1,0 +1,6 @@
+[workspace]
+members = [
+"skat-solver",
+    "game"
+]
+resolver = "2"
