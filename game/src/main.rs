@@ -1,5 +1,5 @@
 use std::io::BufRead;
-use skat_solver::{Game, Input, Output};
+use skat_solver::{ Input, Output};
 
 
 struct ConsoleInput {
@@ -31,8 +31,6 @@ fn main() {
     // if valid execute command
     // display result of command
 
-    let game = Game::new(Box::new(ConsoleInput {
-        stdin: std::io::stdin(),
-    }), Box::new(ConsoleOutput {}));
+
 
 }

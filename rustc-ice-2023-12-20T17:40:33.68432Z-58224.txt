@@ -1,2 +1,0 @@
-thread 'rustc' panicked at compiler/rustc_errors/src/json.rs:163:13:
-failed to print diagnostics: Os { code: 32, kind: BrokenPipe, message: "Broken pipe" }

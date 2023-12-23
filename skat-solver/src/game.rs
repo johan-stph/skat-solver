@@ -45,29 +45,11 @@ impl Variant {
 
 
 
-impl Rank {
-    fn value(&self) -> u32 {
-        match self {
-            Rank::Seven => 0,
-            Rank::Eight => 0,
-            Rank::Nine => 0,
-            Rank::Ten => 10,
-            Rank::Jack => 2,
-            Rank::Queen => 3,
-            Rank::King => 4,
-            Rank::Ace => 11,
-        }
-    }
-
-
-}
-
-
 
 
 pub fn generate_card_deck() -> Vec<Card> {
     let mut deck = Vec::with_capacity(32);
-    for suit in [Suit::Clubs, Suit::Spades, Suit::Hearts, Suit::Diamonds].iter() {
+    for suit in [Suit::Kreuz, Suit::Piqus, Suit::Heart, Suit::Karo].iter() {
         for rank in [Rank::Seven, Rank::Eight, Rank::Nine, Rank::Ten, Rank::Jack, Rank::Queen, Rank::King, Rank::Ace].iter() {
             deck.push(Card { suit: *suit, rank: *rank });
         }
