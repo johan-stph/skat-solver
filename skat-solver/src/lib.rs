@@ -1,13 +1,16 @@
+#![feature(exclusive_range_pattern)]
 #![allow(dead_code)]
 
 use std::cmp::Ordering;
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::fmt;
+use crate::bitboard::Variant;
 use crate::Suit::{Kreuz, Karo, Heart, Piqus};
 
 
 
-pub mod game;
+mod solver;
+mod bitboard;
 
 pub struct Card {
     suit: Suit,
@@ -254,18 +257,7 @@ impl Suit {
 
 
 
-#[derive(Debug)]
-enum Variant {
-    Grand,
-    NullHand,
-    NullOuvert,
-    NullOuvertHand,
-    Null,
-    Diamonds,
-    Hearts,
-    Spades,
-    Clubs,
-}
+
 
 impl TryInto<Suit> for &Variant {
     type Error = ();
@@ -282,7 +274,7 @@ impl TryInto<Suit> for &Variant {
 }
 
 
-fn can_be_placed<'a>(first_card: &Card, remaining_cards: &'a [Card], game: &Variant) -> Vec<&'a Card> {
+pub fn can_be_placed<'a>(first_card: &Card, remaining_cards: &'a [Card], game: &Variant) -> Vec<&'a Card> {
     match game {
         Variant::Null | Variant::NullHand | Variant::NullOuvert | Variant::NullOuvertHand => {
             let playable_cards: Vec<&Card> = remaining_cards.iter()
@@ -342,7 +334,7 @@ fn can_be_placed<'a>(first_card: &Card, remaining_cards: &'a [Card], game: &Vari
 
 
 
-fn determine_who_won_round(card1: &Card, card2: &Card, card3: &Card, game: &Variant) -> (u32, u32) {
+pub fn determine_who_won_round(card1: &Card, card2: &Card, card3: &Card, game: &Variant) -> (u32, u32) {
     let value = card1.rank.value() + card2.rank.value() + card3.rank.value();
     let first: u32 = match game {
         Variant::Null | Variant::NullOuvert | Variant::NullOuvertHand | Variant::NullHand => {
@@ -412,6 +404,17 @@ fn determine_who_won_round(card1: &Card, card2: &Card, card3: &Card, game: &Vari
         }
     };
     (first, value)
+}
+
+
+struct BoardPos {
+
+    game: Variant,
+    declarer: Vec<Card>,
+    opponent1: Vec<Card>,
+    opponent2: Vec<Card>,
+    skat: Vec<Card>,
+    points: u32,
 }
 
 
