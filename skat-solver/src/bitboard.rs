@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::fmt::Debug;
 use std::ops::{BitAnd, BitOr};
 
 const CARDS_TO_INDEX: [u32; 37] = [
@@ -22,6 +22,48 @@ const QUEEN_MASK : u32 = get_binary_mask_for_rank(4);
 const KING_MASK : u32 = get_binary_mask_for_rank(5);
 const TEN_MASK : u32 = get_binary_mask_for_rank(6);
 const ACE_MASK : u32 = get_binary_mask_for_rank(7);
+
+pub(crate) const EMPTY_CARD: BitCard = BitCard(0);
+pub(crate) const KREUZ_JACK: BitCard = BitCard(2_u32.pow(31));
+pub(crate) const PIQUS_JACK: BitCard = BitCard(2_u32.pow(30));
+pub(crate) const HEARTS_JACK: BitCard = BitCard(2_u32.pow(29));
+pub(crate) const KARO_JACK: BitCard = BitCard(2_u32.pow(28));
+pub(crate) const KREUZ_ASS: BitCard = BitCard(2_u32.pow(27));
+pub(crate) const KREUZ_TEN: BitCard = BitCard(2_u32.pow(26));
+pub(crate) const KREUZ_KING: BitCard = BitCard(2_u32.pow(25));
+pub(crate) const KREUZ_QUEEN: BitCard = BitCard(2_u32.pow(24));
+pub(crate) const KREUZ_NINE: BitCard = BitCard(2_u32.pow(23));
+pub(crate) const KREUZ_EIGHT: BitCard = BitCard(2_u32.pow(22));
+pub(crate) const KREUZ_SEVEN: BitCard = BitCard(2_u32.pow(21));
+
+pub(crate) const PIQUS_ASS: BitCard = BitCard(2_u32.pow(20));
+pub(crate) const PIQUS_TEN: BitCard = BitCard(2_u32.pow(19));
+pub(crate) const PIQUS_KING: BitCard = BitCard(2_u32.pow(18));
+pub(crate) const PIQUS_QUEEN: BitCard = BitCard(2_u32.pow(17));
+pub(crate) const PIQUS_NINE: BitCard = BitCard(2_u32.pow(16));
+pub(crate) const PIQUS_EIGHT: BitCard = BitCard(2_u32.pow(15));
+pub(crate) const PIQUS_SEVEN: BitCard = BitCard(2_u32.pow(14));
+
+pub(crate) const HEARTS_ASS: BitCard = BitCard(2_u32.pow(13));
+pub(crate) const HEARTS_TEN: BitCard = BitCard(2_u32.pow(12));
+pub(crate) const HEARTS_KING: BitCard = BitCard(2_u32.pow(11));
+pub(crate) const HEARTS_QUEEN: BitCard = BitCard(2_u32.pow(10));
+pub(crate) const HEARTS_NINE: BitCard = BitCard(2_u32.pow(9));
+pub(crate) const HEARTS_EIGHT: BitCard = BitCard(2_u32.pow(8));
+pub(crate) const HEARTS_SEVEN: BitCard = BitCard(2_u32.pow(7));
+
+pub(crate) const KARO_ASS: BitCard = BitCard(2_u32.pow(6));
+pub(crate) const KARO_TEN: BitCard = BitCard(2_u32.pow(5));
+pub(crate) const KARO_KING: BitCard = BitCard(2_u32.pow(4));
+pub(crate) const KARO_QUEEN: BitCard = BitCard(2_u32.pow(3));
+pub(crate) const KARO_NINE: BitCard = BitCard(2_u32.pow(2));
+pub(crate) const KARO_EIGHT: BitCard = BitCard(2_u32.pow(1));
+pub(crate) const KARO_SEVEN: BitCard = BitCard(2_u32.pow(0));
+
+
+
+
+
 
 
 const fn get_binary_mask_for_rank(rank: u32) -> u32 {
@@ -66,7 +108,7 @@ impl Variant {
             Variant::Clubs => {
                 KREUZ_MASK | GRAND_MASK
             }
-            _ => unimplemented!("Not implemented yet")
+            _ => unimplemented!("Null is yet to be implemented")
         }
 
     }
@@ -74,8 +116,21 @@ impl Variant {
 }
 
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct BitCards(pub(crate) u32);
+
+
+impl Debug for BitCards {
+
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut debug_struct = f.debug_struct("BitCards");
+        for card in *self {
+            debug_struct.field("card", &card.get_human_representation());
+        }
+        debug_struct.finish()
+    }
+
+}
 
 impl BitCards {
 
@@ -99,6 +154,17 @@ impl BitAnd for BitCards {
     }
 }
 
+impl BitCards {
+
+    pub(crate) fn get_cards_points(&self) -> u8 {
+        let mut result = 0;
+        for card in *self {
+            result += card.get_point();
+        }
+        result
+    }
+}
+
 
 impl Iterator for BitCards {
     type Item = BitCard;
@@ -113,9 +179,19 @@ impl Iterator for BitCards {
     }
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone)]
 pub struct BitCard(pub(crate) u32);
 
+
+impl Debug for BitCard {
+
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BitCard")
+            .field("human_representation", &self.get_human_representation())
+            .finish()
+    }
+
+}
 
 impl BitCard {
     fn get_numerical_representation(&self) -> u32 {
@@ -124,6 +200,9 @@ impl BitCard {
     }
 
     pub(crate) fn get_human_representation(&self) -> String {
+        if self.0 == 0 {
+            return "No card".to_string();
+        }
         let numerical_representation = self.get_numerical_representation();
 
         match numerical_representation {
@@ -183,7 +262,7 @@ impl BitCard {
         self.0 > other
     }
 
-    pub(crate) fn get_point(&self) -> u32 {
+    pub(crate) fn get_point(&self) -> u8 {
         if self.0 & GRAND_MASK != 0 {
             return 2
         }
@@ -209,42 +288,12 @@ impl BitCard {
 
 #[cfg(test)]
 mod tests {
-    use crate::bitboard::{ACE_MASK, BitCards, KING_MASK, NINE_MASK, PIQUS_MASK, QUEEN_MASK, SEVEN_MASK, TEN_MASK, Variant};
+    use crate::bitboard::{BitCards, KARO_SEVEN, KING_MASK, NINE_MASK, PIQUS_MASK, QUEEN_MASK, SEVEN_MASK, TEN_MASK, Variant};
 
-    #[test]
-    fn test_cards() {
-        //that
-
-        let variant_hearts = Variant::Grand;
-
-        let mut first_card : BitCards = BitCards(u32::MAX);
-
-        for _ in 0..32 {
-            let next_card_1 = first_card.get_next_card_in_binary();
-
-            let mut second_card = BitCards(u32::MAX);
-
-            for _ in 0..32 {
-                let next_card_2 = second_card.get_next_card_in_binary();
-                if next_card_1 != next_card_2 {
-                    if next_card_1.greater_than(&next_card_2, &variant_hearts) {
-                        println!("{} > {}", next_card_1.get_human_representation(), next_card_2.get_human_representation());
-                    } else {
-                        println!("{} < {}", next_card_1.get_human_representation(), next_card_2.get_human_representation());
-
-                    }
-                }
-
-                second_card = BitCards(second_card.0 & !next_card_2.0)
-            }
-            first_card = BitCards(first_card.0 & (!next_card_1.0));
-
-        }
-    }
 
     #[test]
     fn test_mask() {
-        let mut sum: u32 = 0;
+        let mut sum: u8 = 0;
         for card in BitCards(u32::MAX) {
             sum += card.get_point();
         }
