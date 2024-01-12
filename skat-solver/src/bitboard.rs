@@ -4,10 +4,10 @@ use std::ops::{BitAnd, BitOr};
 const CARDS_TO_INDEX: [u32; 37] = [
     u32::MAX, 0, 1, 26, 2, 23, 27, u32::MAX, 3, 16, 24, 30, 28, 11, u32::MAX, 13, 4, 7, 17, u32::MAX, 25, 22, 31, 15, 29, 10, 12, 6, u32::MAX, 21, 14, 9, 5, 20, 8, 19, 18];
 
-const GRAND_MASK : u32 = !((1 << 28) - 1);
+const GRAND_MASK: u32 = !((1 << 28) - 1);
 const KREUZ_MASK: u32 = get_binary_mask_for_colors(21, 28);
-const PIQUS_MASK : u32 = get_binary_mask_for_colors(14, 21);
-const HEARTS_MASK : u32 = get_binary_mask_for_colors(7, 14);
+const PIQUS_MASK: u32 = get_binary_mask_for_colors(14, 21);
+const HEARTS_MASK: u32 = get_binary_mask_for_colors(7, 14);
 const KARO_MASK: u32 = get_binary_mask_for_colors(0, 7);
 
 const KREUZ_TRUMPF_MASK: u32 = KREUZ_MASK | GRAND_MASK;
@@ -15,13 +15,13 @@ const PIQUS_TRUMPF_MASK: u32 = PIQUS_MASK | GRAND_MASK;
 const HEARTS_TRUMPF_MASK: u32 = HEARTS_MASK | GRAND_MASK;
 const KARO_TRUMPF_MASK: u32 = KARO_MASK | GRAND_MASK;
 
-const SEVEN_MASK : u32 = get_binary_mask_for_rank(1);
-const EIGHT_MASK : u32 = get_binary_mask_for_rank(2);
-const NINE_MASK : u32 = get_binary_mask_for_rank(3);
-const QUEEN_MASK : u32 = get_binary_mask_for_rank(4);
-const KING_MASK : u32 = get_binary_mask_for_rank(5);
-const TEN_MASK : u32 = get_binary_mask_for_rank(6);
-const ACE_MASK : u32 = get_binary_mask_for_rank(7);
+const SEVEN_MASK: u32 = get_binary_mask_for_rank(1);
+const EIGHT_MASK: u32 = get_binary_mask_for_rank(2);
+const NINE_MASK: u32 = get_binary_mask_for_rank(3);
+const QUEEN_MASK: u32 = get_binary_mask_for_rank(4);
+const KING_MASK: u32 = get_binary_mask_for_rank(5);
+const TEN_MASK: u32 = get_binary_mask_for_rank(6);
+const ACE_MASK: u32 = get_binary_mask_for_rank(7);
 
 pub(crate) const EMPTY_CARD: BitCard = BitCard(0);
 pub(crate) const KREUZ_JACK: BitCard = BitCard(2_u32.pow(31));
@@ -61,15 +61,9 @@ pub(crate) const KARO_EIGHT: BitCard = BitCard(2_u32.pow(1));
 pub(crate) const KARO_SEVEN: BitCard = BitCard(2_u32.pow(0));
 
 
-
-
-
-
-
 const fn get_binary_mask_for_rank(rank: u32) -> u32 {
     (1 << (21 + (rank - 1))) | (1 << (14 + (rank - 1))) | (1 << (7 + (rank - 1))) | (1 << (rank - 1))
 }
-
 
 
 const fn get_binary_mask_for_colors(lower: u32, upper: u32) -> u32 {
@@ -94,7 +88,7 @@ impl Variant {
     pub(crate) fn get_binary_mask(&self) -> u32 {
         match self {
             Variant::Grand => {
-              GRAND_MASK
+                GRAND_MASK
             }
             Variant::Diamonds => {
                 KARO_MASK | GRAND_MASK
@@ -110,9 +104,7 @@ impl Variant {
             }
             _ => unimplemented!("Null is yet to be implemented")
         }
-
     }
-
 }
 
 
@@ -121,7 +113,6 @@ pub struct BitCards(pub(crate) u32);
 
 
 impl Debug for BitCards {
-
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut debug_struct = f.debug_struct("BitCards");
         for card in *self {
@@ -129,11 +120,9 @@ impl Debug for BitCards {
         }
         debug_struct.finish()
     }
-
 }
 
 impl BitCards {
-
     ///Returns the next card in binary
     fn get_next_card_in_binary(&self) -> BitCard {
         BitCard(self.0 & (self.0 - 1) ^ self.0)
@@ -146,6 +135,7 @@ impl BitOr for BitCards {
         BitCards(self.0 | rhs.0)
     }
 }
+
 impl BitAnd for BitCards {
     type Output = BitCards;
 
@@ -155,7 +145,6 @@ impl BitAnd for BitCards {
 }
 
 impl BitCards {
-
     pub(crate) fn get_cards_points(&self) -> u8 {
         let mut result = 0;
         for card in *self {
@@ -250,7 +239,7 @@ impl BitCard {
         KARO_MASK
     }
 
-    pub fn greater_than(&self, other: &BitCard, variant: &Variant) -> bool {
+    pub fn greater_than(&self, other: BitCard, variant: &Variant) -> bool {
         let mask = variant.get_binary_mask();
         let card1 = self.0 & mask;
         let card2 = other.0 & mask;
@@ -285,18 +274,73 @@ impl BitCard {
     }
 }
 
+pub(crate) fn calculate_who_won(current_played_cards: (BitCard, BitCard), last_card: BitCard, variant: &Variant) -> (BitCard, u8) {
+    let winning_card = if current_played_cards.0.greater_than(current_played_cards.1, variant) {
+        if current_played_cards.0.greater_than(last_card, variant) {
+            current_played_cards.0
+        } else {
+            last_card
+        }
+    } else if current_played_cards.1.greater_than(last_card, variant) {
+        current_played_cards.1
+    } else {
+        last_card
+    };
+    (winning_card, current_played_cards.0.get_point() + current_played_cards.1.get_point() + last_card.get_point())
+}
+
 
 #[cfg(test)]
 mod tests {
-    use crate::bitboard::{BitCards, KARO_SEVEN, KING_MASK, NINE_MASK, PIQUS_MASK, QUEEN_MASK, SEVEN_MASK, TEN_MASK, Variant};
-
+    use crate::bitboard::{calculate_who_won, HEARTS_EIGHT, HEARTS_QUEEN, HEARTS_TEN, KARO_EIGHT, KARO_NINE, KARO_SEVEN, KREUZ_ASS, KREUZ_EIGHT, KREUZ_KING, KREUZ_TEN, PIQUS_ASS, PIQUS_KING, PIQUS_TEN, Variant};
 
     #[test]
-    fn test_mask() {
-        let mut sum: u8 = 0;
-        for card in BitCards(u32::MAX) {
-            sum += card.get_point();
+    fn cards_with_same_suit() {
+        //calculates who won
+        let winner = HEARTS_TEN;
+        let loser_one = HEARTS_QUEEN;
+        let loser_two = HEARTS_EIGHT;
+        for variant in &[Variant::Clubs, Variant::Grand, Variant::Spades, Variant::Hearts, Variant::Diamonds] {
+            let result = calculate_who_won((winner, loser_one), loser_two, variant);
+            assert_eq!(result.0, winner);
+            assert_eq!(result.1, 13);
         }
-        assert_eq!(sum, 120);
+
+        let winner = KREUZ_ASS;
+        let loser_one = KREUZ_KING;
+        let loser_two = KREUZ_EIGHT;
+        for variant in &[Variant::Clubs, Variant::Grand, Variant::Spades, Variant::Hearts, Variant::Diamonds] {
+            let result = calculate_who_won((winner, loser_one), loser_two, variant);
+            assert_eq!(result.0, winner);
+            assert_eq!(result.1, 15);
+        }
+        let winner = PIQUS_ASS;
+        let loser_one = PIQUS_TEN;
+        let loser_two = PIQUS_KING;
+        for variant in &[Variant::Clubs, Variant::Grand, Variant::Spades, Variant::Hearts, Variant::Diamonds] {
+            let result = calculate_who_won((loser_two, loser_one), winner, variant);
+            assert_eq!(result.0, winner);
+            assert_eq!(result.1, 25);
+        }
+
+        let winner = KARO_NINE;
+        let loser_one = KARO_SEVEN;
+        let loser_two = KARO_EIGHT;
+        for variant in &[Variant::Clubs, Variant::Grand, Variant::Spades, Variant::Hearts, Variant::Diamonds] {
+            let result = calculate_who_won((loser_two, loser_one), winner, variant);
+            assert_eq!(result.0, winner);
+            assert_eq!(result.1, 0);
+        }
+    }
+
+    #[test]
+    fn cards_with_one_trumpf() {
+        let winner = KREUZ_TEN;
+        let loser_one = PIQUS_ASS;
+        let loser_two = PIQUS_KING;
+        let result = calculate_who_won((loser_two, loser_one), winner, &Variant::Clubs);
+        assert_eq!(result.0, winner);
+        assert_eq!(result.1, 25);
+
     }
 }
