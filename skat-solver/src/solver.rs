@@ -3,14 +3,14 @@ use arrayvec::ArrayVec;
 use crate::bitboard::{BitCard, BitCards, calculate_who_won, EMPTY_CARD, Variant};
 
 #[derive(PartialEq, Clone, Copy, Debug)]
-enum Player {
+pub(crate) enum Player {
     One,
     Two,
     Three,
 }
 
 impl Player {
-    fn get_next_player(&self) -> Player {
+    pub(crate) fn get_next_player(&self) -> Player {
         match self {
             Player::One => Player::Two,
             Player::Two => Player::Three,
@@ -19,11 +19,11 @@ impl Player {
     }
 }
 
-struct GlobalState {
-    player_cards: (BitCards, BitCards, BitCards),
+pub(crate) struct GlobalState {
+    pub(crate) player_cards: (BitCards, BitCards, BitCards),
     skat: BitCards,
-    alone_player: Player,
-    variant: Variant,
+    pub(crate) alone_player: Player,
+    pub(crate) variant: Variant,
     skat_points: u8,
 }
 
@@ -43,12 +43,6 @@ struct LocalState {
 }
 
 impl LocalState {
-    fn get_hash(&self) -> u32 {
-        todo!("implement")
-    }
-}
-
-impl LocalState {
     fn is_terminal(&self) -> bool {
         self.remaining_cards.0 == 0
     }
@@ -56,12 +50,18 @@ impl LocalState {
     fn is_max_node(&self, global_state: &GlobalState) -> bool {
         self.current_player == global_state.alone_player
     }
-    fn get_next_state(&self, next_move: BitCard, global_state: &GlobalState) -> LocalState {
-        let available: BitCards = match self.current_player {
+
+    #[inline(always)]
+    fn get_available(&self, global_state: &GlobalState) -> BitCards {
+        match self.current_player {
             Player::One => global_state.player_cards.0 & self.remaining_cards,
             Player::Two => global_state.player_cards.1 & self.remaining_cards,
             Player::Three => global_state.player_cards.2 & self.remaining_cards,
-        };
+        }
+    }
+
+    fn get_next_state(&self, next_move: BitCard, global_state: &GlobalState) -> LocalState {
+        let available = self.get_available(global_state);
         assert_ne!(available.0 & next_move.0, 0);
         let next_player = self.current_player.get_next_player();
         let remaining_cards = BitCards(self.remaining_cards.0 & (!next_move.0));
@@ -108,11 +108,7 @@ impl LocalState {
     fn get_next_states(&self, global_state: &GlobalState) -> ArrayVec<LocalState, 10> {
         let mut next_states: ArrayVec<LocalState, 10> = ArrayVec::new();
         //get available cards
-        let available: BitCards = match self.current_player {
-            Player::One => global_state.player_cards.0 & self.remaining_cards,
-            Player::Two => global_state.player_cards.1 & self.remaining_cards,
-            Player::Three => global_state.player_cards.2 & self.remaining_cards,
-        };
+        let available = self.get_available(global_state);
         let possible_moves: BitCards = calculate_next_moves(available, self.current_suit);
         let next_player = self.current_player.get_next_player();
         for next_move in possible_moves {
@@ -166,14 +162,14 @@ impl LocalState {
 }
 
 
-fn calculate_current_suit_mask(first_card: BitCard, variant: &Variant) -> BitCards {
+pub(crate) fn calculate_current_suit_mask(first_card: BitCard, variant: &Variant) -> BitCards {
     if first_card.0 & variant.get_binary_mask() != 0 {
         return BitCards(variant.get_binary_mask());
     }
     BitCards(first_card.get_color_mask())
 }
 
-fn calculate_winner(winning_card: BitCard, global_state: &GlobalState) -> Player {
+pub(crate) fn calculate_winner(winning_card: BitCard, global_state: &GlobalState) -> Player {
     if winning_card.0 & global_state.player_cards.0.0 != 0 {
         Player::One
     } else if winning_card.0 & global_state.player_cards.1.0 != 0 {
@@ -184,7 +180,7 @@ fn calculate_winner(winning_card: BitCard, global_state: &GlobalState) -> Player
 }
 
 
-fn calculate_next_moves(current_cards: BitCards, suit_mask: Option<BitCards>) -> BitCards {
+pub(crate) fn calculate_next_moves(current_cards: BitCards, suit_mask: Option<BitCards>) -> BitCards {
     match suit_mask {
         None => {
             current_cards
@@ -239,7 +235,7 @@ fn minimax(local_state: LocalState, global_state: &GlobalState, alpha: u8, beta:
 }
 
 impl GlobalState {
-    fn new(player_cards: (BitCards, BitCards, BitCards), skat: BitCards, alone_player: Player, variant: Variant) -> GlobalState {
+    pub(crate) fn new(player_cards: (BitCards, BitCards, BitCards), skat: BitCards, alone_player: Player, variant: Variant) -> GlobalState {
         GlobalState {
             player_cards,
             skat,
@@ -265,7 +261,7 @@ mod tests {
 
 
     #[test]
-    fn minimax_paper() {
+    fn minmax_paper_one() {
         let global_state = GlobalState::new(
             (BitCards(0b10000100000001000101100100000000), BitCards(0b01100000010000000000000001101100), BitCards(0b00000001001000011010000010000001)),
             BitCards(0),
@@ -391,7 +387,7 @@ mod tests {
 
 
     #[test]
-    fn setup_game_2() {
+    fn minmax_paper_two() {
         let player_1 =
             BitCards(
                 KREUZ_SEVEN.0 | KREUZ_EIGHT.0 | KREUZ_QUEEN.0 | KREUZ_KING.0 | KREUZ_ASS.0 |
@@ -427,8 +423,39 @@ mod tests {
     }
 
     #[test]
+    fn minmax_reversed_paper_example_two() {
+        let player_1 =
+            BitCards(
+                KREUZ_SEVEN.0 | KREUZ_EIGHT.0 | KREUZ_QUEEN.0 | KREUZ_KING.0 | KREUZ_ASS.0 |
+                    KARO_SEVEN.0 | KARO_TEN.0 | KARO_ASS.0 | PIQUS_ASS.0);
+        let player_2 =
+            BitCards(
+                HEARTS_JACK.0 | KARO_EIGHT.0 | KARO_NINE.0 | KARO_QUEEN.0 | PIQUS_NINE.0 |
+                    HEARTS_SEVEN.0 | HEARTS_EIGHT.0 | HEARTS_NINE.0 | HEARTS_QUEEN.0);
+        let player_3 =
+            BitCards(
+                KARO_JACK.0 | KREUZ_NINE.0 | HEARTS_ASS.0 | PIQUS_SEVEN.0 | PIQUS_EIGHT.0 |
+                    PIQUS_QUEEN.0 | PIQUS_KING.0 | PIQUS_TEN.0 | KARO_KING.0);
+        let global_state = GlobalState::new(
+            (player_1, player_2, player_3),
+            BitCards(0),
+            Player::One,
+            Variant::Clubs,
+        );
+
+        let final_state = LocalState {
+            remaining_cards: BitCards(0),
+            current_played_cards: (BitCard(0), BitCard(0)),
+            current_player: Player::One,
+            current_suit: None,
+            current_points_alone: 0,
+        };
+    }
+
+
+    #[test]
     #[ignore]
-    fn long_game() {
+    fn min_max_long_game() {
         let player_2 =
             BitCards(
                 HEARTS_JACK.0 | KREUZ_ASS.0 | KREUZ_TEN.0 | KREUZ_SEVEN.0 | KARO_ASS.0 |

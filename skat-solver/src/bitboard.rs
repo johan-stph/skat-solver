@@ -136,6 +136,14 @@ impl BitOr for BitCards {
     }
 }
 
+impl BitOr<BitCard> for BitCards {
+    type Output = BitCards;
+
+    fn bitor(self, rhs: BitCard) -> Self::Output {
+        BitCards(self.0 | rhs.0)
+    }
+}
+
 impl BitAnd for BitCards {
     type Output = BitCards;
 
@@ -180,6 +188,13 @@ impl Debug for BitCard {
             .finish()
     }
 
+}
+impl BitOr for BitCard {
+    type Output = BitCards;
+
+    fn bitor(self, rhs: Self) -> BitCards {
+        BitCards(self.0 | rhs.0)
+    }
 }
 
 impl BitCard {
@@ -273,6 +288,8 @@ impl BitCard {
         panic!("Should not happen")
     }
 }
+
+
 
 pub(crate) fn calculate_who_won(current_played_cards: (BitCard, BitCard), last_card: BitCard, variant: &Variant) -> (BitCard, u8) {
     let winning_card = if current_played_cards.0.greater_than(current_played_cards.1, variant) {

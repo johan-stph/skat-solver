@@ -11,6 +11,7 @@ use crate::Suit::{Kreuz, Karo, Heart, Piqus};
 
 mod solver;
 mod bitboard;
+mod solverv2;
 
 pub struct Card {
     suit: Suit,
