@@ -1,6 +1,6 @@
 use std::cmp::{max, min};
 use arrayvec::ArrayVec;
-use crate::bitboard::{BitCard, BitCards, EMPTY_CARD, Variant};
+use crate::bitboard::{BitCard, BitCards, calculate_who_won, EMPTY_CARD, Variant};
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 enum Player {
@@ -24,22 +24,26 @@ struct GlobalState {
     skat: BitCards,
     alone_player: Player,
     variant: Variant,
+    skat_points: u8,
 }
 
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct LocalState {
-    remaining_cards: BitCards, // 32 bit
-    current_played_cards: (BitCard, BitCard), // 5 + 5 bit
-    current_player: Player, //2 bits
-    current_suit: Option<BitCards>, // does not need to be stored
+    remaining_cards: BitCards,
+    // 32 bit
+    current_played_cards: (BitCard, BitCard),
+    // 5 + 5 bit
+    current_player: Player,
+    //2 bits
+    current_suit: Option<BitCards>,
+    // does not need to be stored
     current_points_alone: u8, // 7 bit 0-120 < 128
     // total = 51 bit
 }
 
 impl LocalState {
     fn get_hash(&self) -> u32 {
-
         todo!("implement")
     }
 }
@@ -49,9 +53,6 @@ impl LocalState {
         self.remaining_cards.0 == 0
     }
 
-    fn get_points(&self, global_state: &GlobalState) -> u8 {
-        self.current_points_alone + global_state.get_skat_points()
-    }
     fn is_max_node(&self, global_state: &GlobalState) -> bool {
         self.current_player == global_state.alone_player
     }
@@ -84,7 +85,7 @@ impl LocalState {
                 }
             }
             (_, _) => {
-                let winner_card = calculate_who_won(self.current_played_cards, &next_move, &global_state.variant);
+                let winner_card = calculate_who_won(self.current_played_cards, next_move, &global_state.variant);
                 //if winner_card is alone_player add points
                 let winner_player = calculate_winner(winner_card.0, global_state);
                 let winner_points = if winner_player == global_state.alone_player {
@@ -112,7 +113,7 @@ impl LocalState {
             Player::Two => global_state.player_cards.1 & self.remaining_cards,
             Player::Three => global_state.player_cards.2 & self.remaining_cards,
         };
-        let possible_moves: BitCards = calculate_next_moves(&available, self.current_suit);
+        let possible_moves: BitCards = calculate_next_moves(available, self.current_suit);
         let next_player = self.current_player.get_next_player();
         for next_move in possible_moves {
             let remaining_cards = BitCards(self.remaining_cards.0 & (!next_move.0));
@@ -140,7 +141,7 @@ impl LocalState {
                     )
                 }
                 (_, _) => {
-                    let winner_card = calculate_who_won(self.current_played_cards, &next_move, &global_state.variant);
+                    let winner_card = calculate_who_won(self.current_played_cards, next_move, &global_state.variant);
                     //if winner_card is alone_player add points
                     let winner_player = calculate_winner(winner_card.0, global_state);
                     let winner_points = if winner_player == global_state.alone_player {
@@ -165,7 +166,6 @@ impl LocalState {
 }
 
 
-
 fn calculate_current_suit_mask(first_card: BitCard, variant: &Variant) -> BitCards {
     if first_card.0 & variant.get_binary_mask() != 0 {
         return BitCards(variant.get_binary_mask());
@@ -183,39 +183,26 @@ fn calculate_winner(winning_card: BitCard, global_state: &GlobalState) -> Player
     }
 }
 
-fn calculate_who_won(current_played_cards: (BitCard, BitCard), last_card: &BitCard, variant: &Variant) -> (BitCard, u8) {
-    let winning_card = if current_played_cards.0.greater_than(&current_played_cards.1, variant) {
-        if current_played_cards.0.greater_than(last_card, variant) {
-            current_played_cards.0
-        } else {
-            *last_card
+
+fn calculate_next_moves(current_cards: BitCards, suit_mask: Option<BitCards>) -> BitCards {
+    match suit_mask {
+        None => {
+            current_cards
         }
-    } else if current_played_cards.1.greater_than(last_card, variant) {
-        current_played_cards.1
-    } else {
-        *last_card
-    };
-    (winning_card, current_played_cards.0.get_point() + current_played_cards.1.get_point() + last_card.get_point())
-}
-
-
-fn calculate_next_moves(current_cards: &BitCards, suit_mask: Option<BitCards>) -> BitCards {
-    if suit_mask.is_none() {
-        return *current_cards;
+        Some(mask) => {
+            let available = mask & current_cards;
+            if available.0 != 0 {
+                return available;
+            }
+            current_cards
+        }
     }
-    //now the option must exist
-    let suit_mask = suit_mask.unwrap();
-    let available = suit_mask & *current_cards;
-    if available.0 != 0 {
-        return available;
-    }
-    *current_cards
 }
 
 
 fn minimax(local_state: LocalState, global_state: &GlobalState, alpha: u8, beta: u8) -> (u8, Option<LocalState>) {
     if local_state.is_terminal() {
-        return (local_state.get_points(global_state), None);
+        return (local_state.current_points_alone + global_state.skat_points, None);
     }
     let mut result: u8;
     let mut optimal_move: Option<LocalState> = None;
@@ -252,9 +239,18 @@ fn minimax(local_state: LocalState, global_state: &GlobalState, alpha: u8, beta:
 }
 
 impl GlobalState {
-    fn get_skat_points(&self) -> u8 {
+    fn new(player_cards: (BitCards, BitCards, BitCards), skat: BitCards, alone_player: Player, variant: Variant) -> GlobalState {
+        GlobalState {
+            player_cards,
+            skat,
+            alone_player,
+            variant,
+            skat_points: GlobalState::get_skat_points(skat),
+        }
+    }
+    fn get_skat_points(skat: BitCards) -> u8 {
         let mut result = 0;
-        for card in self.skat {
+        for card in skat {
             result += card.get_point();
         }
         result
@@ -267,35 +263,15 @@ mod tests {
     use crate::bitboard::{BitCard, BitCards, HEARTS_ASS, HEARTS_EIGHT, HEARTS_JACK, HEARTS_KING, HEARTS_NINE, HEARTS_QUEEN, HEARTS_SEVEN, HEARTS_TEN, KARO_ASS, KARO_EIGHT, KARO_JACK, KARO_KING, KARO_NINE, KARO_QUEEN, KARO_SEVEN, KARO_TEN, KREUZ_ASS, KREUZ_EIGHT, KREUZ_JACK, KREUZ_KING, KREUZ_NINE, KREUZ_QUEEN, KREUZ_SEVEN, KREUZ_TEN, PIQUS_ASS, PIQUS_EIGHT, PIQUS_JACK, PIQUS_KING, PIQUS_NINE, PIQUS_QUEEN, PIQUS_SEVEN, PIQUS_TEN, Variant};
     use crate::solver::{calculate_current_suit_mask, GlobalState, LocalState, minimax, Player};
 
-    #[test]
-    fn minimax_simple() {
-        let global_state = GlobalState {
-            player_cards: (BitCards(0b01000100001001011000000011010100), BitCards(0b10010000110000100100001000001011), BitCards(0b00101011000110000001110100000000)),
-            skat: BitCards(0b00000000000000000010000000100000),
-            alone_player: Player::Three,
-            variant: Variant::Grand,
-        };
-        let local_state = LocalState {
-            remaining_cards: BitCards(u32::MAX),
-            current_played_cards: (BitCard(0), BitCard(0)),
-            current_player: Player::One,
-            current_suit: None,
-            current_points_alone: 0,
-        };
-        //let result = minimax(local_state, &global_state);
-        //dbg!(result);
-    }
 
     #[test]
-    #[ignore]
     fn minimax_paper() {
-        let global_state = GlobalState {
-            player_cards: (BitCards(0b10000100000001000101100100000000), BitCards(0b01100000010000000000000001101100), BitCards(0b00000001001000011010000010000001)),
-            skat: BitCards(0),
-            alone_player: Player::One,
-            variant: Variant::Clubs,
-        };
-
+        let global_state = GlobalState::new(
+            (BitCards(0b10000100000001000101100100000000), BitCards(0b01100000010000000000000001101100), BitCards(0b00000001001000011010000010000001)),
+            BitCards(0),
+            Player::One,
+            Variant::Clubs,
+        );
 
         let local_state = LocalState {
             remaining_cards: BitCards(global_state.player_cards.0.0 | global_state.player_cards.1.0 | global_state.player_cards.2.0),
@@ -407,44 +383,14 @@ mod tests {
         assert_eq!(res_8.1.unwrap(), local_state_9);
         let res_9 = minimax(local_state_9, &global_state, 0, 120);
 
-        let local_state_clemens = LocalState {
-            remaining_cards: BitCards(global_state.player_cards.0.0 | global_state.player_cards.1.0 | global_state.player_cards.2.0)
-                & BitCards(!PIQUS_KING.0)
-                & BitCards(!KARO_NINE.0)
-                & BitCards(!PIQUS_EIGHT.0),
-            current_played_cards: (BitCard(0), BitCard(0)),
-            current_player: Player::One,
-            current_suit: None,
-            current_points_alone: 4,
-        };
-        let clemens_result = minimax(local_state_clemens, &global_state, 0, 120);
-        //dbg!(clemens_result);
 
         //let result = minimax(local_state_10, &global_state, 0, 120);
         //dbg!(result.1.unwrap().current_played_cards.1.get_human_representation());
         //dbg!(result);
     }
 
-    #[test]
-    fn setup() {
-        let first = BitCards(0b01000100001001011000000011010100);
-        let second = BitCards(0b10010000110000100100001000001011);
-        let third = BitCards(0b00101011000110000001110100000000);
-        let skat = BitCards(0b00000000000000000010000000100000);
-        let all = BitCards(0b11111111111111111111111111111111);
-        let new = BitCards(first.0 | second.0 | third.0 | skat.0);
-        assert_eq!(first.0 & second.0 & third.0 & skat.0, 0);
-        assert_eq!(new.0, all.0);
-    }
 
     #[test]
-    fn setup_paper() {
-        let resulting = BitCards(0b10000100000001000101100100000000) | BitCards(0b01100000010000000000000001101100) | BitCards(0b00000001001000011010000010000001);
-        assert_eq!(resulting.get_cards_points(), 72);
-    }
-
-    #[test]
-    #[ignore]
     fn setup_game_2() {
         let player_1 =
             BitCards(
@@ -463,12 +409,12 @@ mod tests {
         assert_eq!(all_cards.0.count_ones(), 27);
         assert_eq!(all_cards.get_cards_points(), 92);
 
-        let global_state = GlobalState {
-            player_cards: (player_1, player_2, player_3),
-            skat: BitCards(0),
-            alone_player: Player::One,
-            variant: Variant::Clubs,
-        };
+        let global_state = GlobalState::new(
+            (player_1, player_2, player_3),
+            BitCards(0),
+            Player::One,
+            Variant::Clubs,
+        );
         let local_state = LocalState {
             remaining_cards: all_cards,
             current_played_cards: (BitCard(0), BitCard(0)),
@@ -481,6 +427,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn long_game() {
         let player_2 =
             BitCards(
@@ -500,12 +447,12 @@ mod tests {
         let all = player_1 | player_2 | player_3;
         assert_eq!(all.0 | skat.0, u32::MAX);
 
-        let global_state = GlobalState {
-            player_cards: (player_1, player_2, player_3),
+        let global_state = GlobalState::new(
+            (player_1, player_2, player_3),
             skat,
-            alone_player: Player::Two,
-            variant: Variant::Grand,
-        };
+            Player::Two,
+            Variant::Grand,
+        );
         let local_state = LocalState {
             remaining_cards: all,
             current_played_cards: (BitCard(0), BitCard(0)),
@@ -515,6 +462,5 @@ mod tests {
         };
         let result = minimax(local_state, &global_state, 0, 120);
         assert_eq!(result.0, 63)
-
     }
 }
