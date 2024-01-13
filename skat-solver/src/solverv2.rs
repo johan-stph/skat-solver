@@ -16,11 +16,20 @@ pub(crate) struct LState {
     achieved_points: u8, // 0 bit
 }
 
+impl LState {
+    fn get_hash(&self) -> (u32, Player) {
+        (self.remaining_cards.0, self.current_player)
+    }
+}
+
+
 
 impl LState {
     fn is_terminal(&self) -> bool {
         self.remaining_cards.0 == 0
     }
+
+    #[inline(always)]
     fn is_max_node(&self, global_state: &GlobalState) -> bool {
         self.current_player == global_state.alone_player
     }
@@ -49,7 +58,7 @@ impl LState {
                             remaining_cards,
                             current_played_cards: (next_move, BitCard(0)),
                             current_player: next_player,
-                            current_suit: Some(crate::solver::calculate_current_suit_mask(next_move, &global_state.variant)),
+                            current_suit: Some(calculate_current_suit_mask(next_move, &global_state.variant)),
                             achieved_points: 0,
                         }
                     );

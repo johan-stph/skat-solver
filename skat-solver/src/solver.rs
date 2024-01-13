@@ -2,7 +2,7 @@ use std::cmp::{max, min};
 use arrayvec::ArrayVec;
 use crate::bitboard::{BitCard, BitCards, calculate_who_won, EMPTY_CARD, Variant};
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug, Eq, Hash)]
 pub(crate) enum Player {
     One,
     Two,
@@ -21,10 +21,10 @@ impl Player {
 
 pub(crate) struct GlobalState {
     pub(crate) player_cards: (BitCards, BitCards, BitCards),
-    skat: BitCards,
+    pub(crate) skat: BitCards,
     pub(crate) alone_player: Player,
     pub(crate) variant: Variant,
-    skat_points: u8,
+    pub(crate) skat_points: u8,
 }
 
 
