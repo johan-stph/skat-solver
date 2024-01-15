@@ -1,14 +1,12 @@
 use std::fmt::Debug;
 use std::ops::{BitAnd, BitOr};
+use crate::solver::Variant;
 
-const CARDS_TO_INDEX: [u32; 37] = [
-    u32::MAX, 0, 1, 26, 2, 23, 27, u32::MAX, 3, 16, 24, 30, 28, 11, u32::MAX, 13, 4, 7, 17, u32::MAX, 25, 22, 31, 15, 29, 10, 12, 6, u32::MAX, 21, 14, 9, 5, 20, 8, 19, 18];
-
-const GRAND_MASK: u32 = !((1 << 28) - 1);
-const KREUZ_MASK: u32 = get_binary_mask_for_colors(21, 28);
-const PIQUS_MASK: u32 = get_binary_mask_for_colors(14, 21);
-const HEARTS_MASK: u32 = get_binary_mask_for_colors(7, 14);
-const KARO_MASK: u32 = get_binary_mask_for_colors(0, 7);
+pub(crate) const GRAND_MASK: u32 = !((1 << 28) - 1);
+pub(crate) const KREUZ_MASK: u32 = get_binary_mask_for_colors(21, 28);
+pub(crate) const PIQUS_MASK: u32 = get_binary_mask_for_colors(14, 21);
+pub(crate) const HEARTS_MASK: u32 = get_binary_mask_for_colors(7, 14);
+pub(crate) const KARO_MASK: u32 = get_binary_mask_for_colors(0, 7);
 
 const KREUZ_TRUMPF_MASK: u32 = KREUZ_MASK | GRAND_MASK;
 const PIQUS_TRUMPF_MASK: u32 = PIQUS_MASK | GRAND_MASK;
@@ -71,44 +69,9 @@ const fn get_binary_mask_for_colors(lower: u32, upper: u32) -> u32 {
 }
 
 
-#[derive(Debug)]
-pub enum Variant {
-    Grand,
-    NullHand,
-    NullOuvert,
-    NullOuvertHand,
-    Null,
-    Diamonds,
-    Hearts,
-    Spades,
-    Clubs,
-}
-
-impl Variant {
-    pub(crate) fn get_binary_mask(&self) -> u32 {
-        match self {
-            Variant::Grand => {
-                GRAND_MASK
-            }
-            Variant::Diamonds => {
-                KARO_MASK | GRAND_MASK
-            }
-            Variant::Hearts => {
-                HEARTS_MASK | GRAND_MASK
-            }
-            Variant::Spades => {
-                PIQUS_MASK | GRAND_MASK
-            }
-            Variant::Clubs => {
-                KREUZ_MASK | GRAND_MASK
-            }
-            _ => unimplemented!("Null is yet to be implemented")
-        }
-    }
-}
 
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct BitCards(pub(crate) u32);
 
 
@@ -124,7 +87,7 @@ impl Debug for BitCards {
 
 impl BitCards {
     ///Returns the next card in binary
-    fn get_next_card_in_binary(&self) -> BitCard {
+    pub(crate) fn get_next_card_in_binary(&self) -> BitCard {
         BitCard(self.0 & (self.0 - 1) ^ self.0)
     }
 }
@@ -176,7 +139,7 @@ impl Iterator for BitCards {
     }
 }
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Eq, Hash)]
 pub struct BitCard(pub(crate) u32);
 
 
@@ -291,25 +254,12 @@ impl BitCard {
 
 
 
-pub(crate) fn calculate_who_won(current_played_cards: (BitCard, BitCard), last_card: BitCard, variant: &Variant) -> (BitCard, u8) {
-    let winning_card = if current_played_cards.0.greater_than(current_played_cards.1, variant) {
-        if current_played_cards.0.greater_than(last_card, variant) {
-            current_played_cards.0
-        } else {
-            last_card
-        }
-    } else if current_played_cards.1.greater_than(last_card, variant) {
-        current_played_cards.1
-    } else {
-        last_card
-    };
-    (winning_card, current_played_cards.0.get_point() + current_played_cards.1.get_point() + last_card.get_point())
-}
 
 
 #[cfg(test)]
 mod tests {
-    use crate::bitboard::{calculate_who_won, HEARTS_EIGHT, HEARTS_QUEEN, HEARTS_TEN, KARO_EIGHT, KARO_NINE, KARO_SEVEN, KREUZ_ASS, KREUZ_EIGHT, KREUZ_KING, KREUZ_TEN, PIQUS_ASS, PIQUS_KING, PIQUS_TEN, Variant};
+    use crate::solver::bitboard::{ HEARTS_EIGHT, HEARTS_QUEEN, HEARTS_TEN, KARO_EIGHT, KARO_NINE, KARO_SEVEN, KREUZ_ASS, KREUZ_EIGHT, KREUZ_KING, KREUZ_TEN, PIQUS_ASS, PIQUS_KING, PIQUS_TEN};
+    use crate::solver::{calculate_who_won, Variant};
 
     #[test]
     fn cards_with_same_suit() {
