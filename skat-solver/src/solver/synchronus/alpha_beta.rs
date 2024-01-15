@@ -18,11 +18,11 @@ struct LocalState {
 }
 
 impl LocalState {
-    fn new(remaining_cards: BitCards) -> LocalState {
+    fn new(remaining_cards: BitCards, current_player: Player) -> LocalState {
         LocalState {
             remaining_cards,
             current_played_cards: (EMPTY_CARD, EMPTY_CARD),
-            current_player: Player::One,
+            current_player: current_player,
             current_suit: None,
             current_points_alone: 0
         }
@@ -191,9 +191,12 @@ fn minimax(local_state: LocalState, global_state: &GlobalState, alpha: u8, beta:
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
     use crate::solver::bitboard::{BitCards, HEARTS_ASS, HEARTS_EIGHT, HEARTS_JACK, HEARTS_KING, HEARTS_NINE, HEARTS_QUEEN, HEARTS_SEVEN, HEARTS_TEN, KARO_ASS, KARO_EIGHT, KARO_JACK, KARO_KING, KARO_NINE, KARO_QUEEN, KARO_SEVEN, KARO_TEN, KREUZ_ASS, KREUZ_EIGHT, KREUZ_JACK, KREUZ_KING, KREUZ_NINE, KREUZ_QUEEN, KREUZ_SEVEN, KREUZ_TEN, PIQUS_ASS, PIQUS_EIGHT, PIQUS_JACK, PIQUS_KING, PIQUS_NINE, PIQUS_QUEEN, PIQUS_SEVEN, PIQUS_TEN};
-    use crate::solver::{GlobalState, Player};
+    use crate::solver::{GlobalState, Player, Variant};
+    use crate::solver::synchronus::ab::ab;
     use crate::solver::synchronus::alpha_beta::{LocalState, minimax};
+    use crate::solver::synchronus::local_state::LState;
     use crate::solver::Variant::Clubs;
 
 
@@ -205,7 +208,7 @@ mod tests {
         let player_three = KREUZ_QUEEN | KREUZ_SEVEN | HEARTS_ASS | HEARTS_SEVEN | PIQUS_NINE | PIQUS_EIGHT| KARO_SEVEN;
         let all_cards = player_one | player_two | player_three;
 
-        let local_state = LocalState::new(all_cards);
+        let local_state = LocalState::new(all_cards, Player::One);
         let global_state = GlobalState::new((player_one, player_two, player_three), BitCards(0), Player::One, Clubs);
         //let result_minmax = minimax(local_state, &global_state);
         let result_alpha_beta = minimax(local_state, &global_state, 0, 120);
@@ -239,10 +242,58 @@ mod tests {
             Player::One,
             Clubs,
         );
-        let local_state = LocalState::new(all_cards);
+        let local_state = LocalState::new(all_cards, Player::One);
         let result = minimax(local_state, &global_state, 0, 120);
         assert_eq!(result.0, 78)
     }
 
+    fn run_test(line: &str) -> (u8, u8) {
+        let data: Vec<&str> = line.split(',').collect();
+        let p1 = BitCards(data[0].parse::<u32>().unwrap());
+        let p2 = BitCards(data[1].parse::<u32>().unwrap());
+        let p3 = BitCards(data[2].parse::<u32>().unwrap());
+        let skat= BitCards(data[3].parse::<u32>().unwrap());
+        let current_player: Player = Player::from(data[4].parse::<u8>().unwrap());
+        let variant: Variant = Variant::from(data[5].parse::<u8>().unwrap());
+        let score = data[6].parse::<u8>().unwrap();
+        let local_state = LocalState::new(p1 | p2 | p3, current_player);
+        let global_state = GlobalState::new((p1, p2, p3), skat, Player::One, variant);
+        let result = minimax(local_state, &global_state, 0, 120);
+        (result.0, score)
+    }
+
+
+    #[test]
+    fn alpha_beta_four_cards() {
+        let input = fs::read_to_string("data/four_cards.txt").unwrap();
+        for line in input.lines() {
+            let result = run_test(line);
+            assert_eq!(result.0, result.1)
+        }
+    }
+    #[test]
+    fn alpha_beta_seven_cards() {
+        let input = fs::read_to_string("data/seven.txt").unwrap();
+        for line in input.lines() {
+            let result = run_test(line);
+            assert_eq!(result.0, result.1)
+        }
+    }
+    #[test]
+    fn alpha_beta_five_cards() {
+        let input = fs::read_to_string("data/five_cards.txt").unwrap();
+        for line in input.lines() {
+            let result = run_test(line);
+            assert_eq!(result.0, result.1)
+        }
+    }
+    #[test]
+    fn alpha_beta_six_cards() {
+        let input = fs::read_to_string("data/six_cards.txt").unwrap();
+        for line in input.lines() {
+            let result = run_test(line);
+            assert_eq!(result.0, result.1)
+        }
+    }
 
 }

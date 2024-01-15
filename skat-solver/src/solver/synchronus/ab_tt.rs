@@ -1,3 +1,4 @@
+
 use std::cmp::{max, min};
 use std::collections::HashMap;
 use fxhash::FxHashMap;
@@ -16,12 +17,12 @@ pub enum Bounds {
 
 pub struct EnhancedSolver {
     pub global_state: GlobalState,
-    pub look_up_table: FxHashMap<(u32), (i8, Bounds)>
+    pub look_up_table: FxHashMap<u32, (i8, Bounds)>
 }
 
 impl EnhancedSolver {
     fn try_insert(&mut self, local_state: &LState, score: i8, bound: Bounds) {
-        if local_state.current_suit.is_none() {
+        if local_state.is_full_node() {
             self.look_up_table.insert(local_state.get_hash_better(&self.global_state), (score, bound));
         }
     }
@@ -32,7 +33,7 @@ impl EnhancedSolver {
         let mut new_alpha = agoof;
         let mut new_beta = bgoof;
 
-        if local_state.current_suit.is_none() {
+        if local_state.is_full_node() {
             if let Some(result) = self.look_up_table.get(&local_state.get_hash_better(&self.global_state)) {
                 match result.1 {
                     Valid => {
@@ -57,8 +58,8 @@ impl EnhancedSolver {
             result = new_beta;
         }
 
-        for next_state in local_state.get_next_states(&self.global_state) {
-            let t_q = next_state.achieved_points as i8;
+        for (next_state, achieved_points) in local_state.get_next_states(&self.global_state) {
+            let t_q = achieved_points as i8;
             if local_state.is_max_node(&self.global_state) {
                 let succ_val= t_q +
                     self.ab_tt(next_state, result - t_q, new_beta - t_q);
@@ -90,7 +91,7 @@ pub struct Solver {
 
 impl Solver {
     fn try_insert(&mut self, local_state: &LState, score: i32, bound: Bounds) {
-        if local_state.current_suit.is_none() {
+        if local_state.is_full_node() {
             self.look_up_table.insert(local_state.get_hash(), (score, bound));
         }
     }
@@ -101,7 +102,7 @@ impl Solver {
         let mut new_alpha = agoof;
         let mut new_beta = bgoof;
 
-        if local_state.current_suit.is_none() {
+        if local_state.is_full_node() {
             if let Some(result) = self.look_up_table.get(&local_state.get_hash()) {
                 match result.1 {
                     Valid => {
@@ -126,8 +127,8 @@ impl Solver {
             result = new_beta;
         }
 
-        for next_state in local_state.get_next_states(&self.global_state) {
-            let t_q = next_state.achieved_points as i32;
+        for (next_state, achieved_points) in local_state.get_next_states(&self.global_state) {
+            let t_q = achieved_points as i32;
             if local_state.is_max_node(&self.global_state) {
                 let succ_val= t_q +
                     self.ab_tt(next_state, result - t_q, new_beta - t_q);
@@ -157,18 +158,17 @@ impl Solver {
         let mut new_alpha = alpha;
         let mut new_beta = beta;
 
-        if local_state.current_suit.is_none() {
+        if local_state.is_full_node() {
             if let Some(result) = self.look_up_table.get(&local_state.get_hash()) {
                 if let Valid = result.1 {
                     return (result.0 as i8, None)
                 }
             }
         };
-
         let mut optimal_move: Option<LState> = None;
 
-        for next_state in local_state.get_next_states(&self.global_state) {
-            let achieved = next_state.achieved_points as i8;
+        for (next_state, achieved_points) in local_state.get_next_states(&self.global_state) {
+            let achieved = achieved_points as i8;
             let poss_alpha_or_beta = achieved + self.minimax_with_alpha_beta_tt(next_state,
                                                                                 new_alpha - achieved,
                                                                                 new_beta - achieved).0;
@@ -218,13 +218,7 @@ mod tests {
             Player::One,
             Variant::Clubs
         );
-        let local_state = LState {
-            remaining_cards: all_cards,
-            current_played_cards: (EMPTY_CARD, EMPTY_CARD),
-            current_player: Player::One,
-            current_suit: None,
-            achieved_points: 0,
-        };
+        let local_state = LState::new(all_cards, Player::One);
         let mut solver = Solver {
             global_state,
             look_up_table: Default::default(),
@@ -242,13 +236,7 @@ mod tests {
             Player::One,
             Variant::Clubs
         );
-        let local_state = LState {
-            remaining_cards: all_cards,
-            current_played_cards: (EMPTY_CARD, EMPTY_CARD),
-            current_player: Player::One,
-            current_suit: None,
-            achieved_points: 0,
-        };
+        let local_state = LState::new(all_cards, Player::One);
         let mut solver = Solver {
             global_state,
             look_up_table: Default::default(),
@@ -266,13 +254,7 @@ mod tests {
             Player::One,
             Variant::Clubs
         );
-        let local_state = LState {
-            remaining_cards: all_cards,
-            current_played_cards: (EMPTY_CARD, EMPTY_CARD),
-            current_player: Player::One,
-            current_suit: None,
-            achieved_points: 0,
-        };
+        let local_state = LState::new(all_cards, Player::One);
 
         let mut solver = Solver {
             global_state,
@@ -295,13 +277,7 @@ mod tests {
             Player::One,
             Variant::Clubs,
         );
-        let local_state = LState {
-            remaining_cards: all_cards,
-            current_played_cards: (EMPTY_CARD, EMPTY_CARD),
-            current_player: Player::One,
-            current_suit: None,
-            achieved_points: 0,
-        };
+        let local_state = LState::new(all_cards, Player::One);
         //let res_alt = minimax_with_alpha_beta(local_state, &global_state, 0, 120);
 
         let mut solver = Solver {
@@ -326,13 +302,7 @@ mod tests {
             Player::One,
             Variant::Clubs,
         );
-        let local_state = LState {
-            remaining_cards: all_cards,
-            current_played_cards: (EMPTY_CARD, EMPTY_CARD),
-            current_player: Player::Two,
-            current_suit: None,
-            achieved_points: 0,
-        };
+        let local_state = LState::new(all_cards, Player::Two);
         //let res_alt = minimax_with_alpha_beta(local_state, &global_state, 0, 120);
 
         let mut solver = Solver {
@@ -358,13 +328,7 @@ mod tests {
             Player::One,
             Variant::Clubs,
         );
-        let local_state = LState {
-            remaining_cards: all_cards,
-            current_played_cards: (EMPTY_CARD, EMPTY_CARD),
-            current_player: Player::Two,
-            current_suit: None,
-            achieved_points: 0,
-        };
+        let local_state = LState::new(all_cards, Player::Two);
 
         let mut solver = Solver {
             global_state,
@@ -390,13 +354,7 @@ mod tests {
             Player::One,
             Variant::Clubs,
         );
-        let local_state = LState {
-            remaining_cards: all_cards,
-            current_played_cards: (EMPTY_CARD, EMPTY_CARD),
-            current_player: Player::Two,
-            current_suit: None,
-            achieved_points: 0,
-        };
+        let local_state = LState::new(all_cards, Player::Two);
         //let safe = minimax_with_alpha_beta(local_state, &global_state, 0, 120);
         let mut solver = Solver {
             global_state,
@@ -423,20 +381,12 @@ mod tests {
             Player::One,
             Variant::Clubs,
         );
-        let local_state = LState {
-            remaining_cards: all_cards,
-            current_played_cards: (EMPTY_CARD, EMPTY_CARD),
-            current_player: Player::Two,
-            current_suit: None,
-            achieved_points: 0,
-        };
-
+        let local_state = LState::new(all_cards, Player::Two);
         let mut solver = Solver {
             global_state,
             look_up_table: Default::default(),
         };
         let result = solver.ab_tt(local_state, 0, 120);
-
         assert_eq!(result, 7);
     }
 
@@ -455,13 +405,7 @@ mod tests {
             Player::One,
             Variant::Clubs,
         );
-        let local_state = LState {
-            remaining_cards: all_cards,
-            current_played_cards: (EMPTY_CARD, EMPTY_CARD),
-            current_player: Player::One,
-            current_suit: None,
-            achieved_points: 0,
-        };
+        let local_state = LState::new(all_cards, Player::One);
 
         let mut solver = Solver {
             global_state,
@@ -497,13 +441,7 @@ mod tests {
             Player::One,
             Variant::Clubs,
         );
-        let local_state = LState {
-            remaining_cards: all_cards,
-            current_played_cards: (EMPTY_CARD, EMPTY_CARD),
-            current_player: Player::One,
-            current_suit: None,
-            achieved_points: 0,
-        };
+        let local_state = LState::new(all_cards, Player::One);
         //let result = minimax_with_alpha_beta(local_state, &global_state, 0, 120);
         let mut solver = Solver {
             global_state,
@@ -528,13 +466,7 @@ mod tests {
             Player::One,
             Variant::Clubs,
         );
-        let local_state = LState {
-            remaining_cards: all,
-            current_played_cards: (EMPTY_CARD, EMPTY_CARD),
-            current_player: Player::One,
-            current_suit: None,
-            achieved_points: 0,
-        };
+        let local_state = LState::new(all, Player::One);
         //let result_normal = minimax(local_state, &global_state);
         //let result = minimax_with_alpha_beta(local_state, &global_state, 0, 120);
         //assert_eq!(result_normal.0, 5);
@@ -551,13 +483,7 @@ mod tests {
             Variant::Clubs,
         );
 
-        let local_state = LState {
-            remaining_cards: player1 | player2 | player3,
-            current_played_cards: (EMPTY_CARD, EMPTY_CARD),
-            current_player: Player::One,
-            current_suit: None,
-            achieved_points: 0,
-        };
+        let local_state = LState::new(player1 | player2 | player3, Player::One);
 
         let mut solver = Solver {
             global_state,

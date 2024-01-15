@@ -72,7 +72,7 @@ const fn get_binary_mask_for_colors(lower: u32, upper: u32) -> u32 {
 
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct BitCards(pub(crate) u32);
+pub struct BitCards(pub u32);
 
 
 impl Debug for BitCards {
@@ -140,7 +140,7 @@ impl Iterator for BitCards {
 }
 
 #[derive(PartialEq, Copy, Clone, Eq, Hash)]
-pub struct BitCard(pub(crate) u32);
+pub struct BitCard(pub u32);
 
 
 impl Debug for BitCard {

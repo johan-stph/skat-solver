@@ -1,17 +1,31 @@
 use crate::solver::bitboard::{BitCard, BitCards, GRAND_MASK, HEARTS_MASK, KARO_MASK};
+use crate::solver::Variant::{Clubs, Diamonds, Grand, Hearts, Spades};
 
 mod concurrent;
-mod synchronus;
+pub mod synchronus;
 pub mod bitboard;
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Variant {
     Grand,
-    Diamonds,
-    Hearts,
-    Spades,
     Clubs,
+    Spades,
+    Hearts,
+    Diamonds,
+}
+
+impl From<u8> for Variant {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => Grand,
+            1 => Clubs,
+            2 => Spades,
+            3 => Hearts,
+            4 => Diamonds,
+            _ => panic!()
+        }
+    }
 }
 
 impl Variant {
@@ -38,11 +52,23 @@ impl Variant {
 
 
 #[derive(PartialEq, Clone, Copy, Debug, Eq, Hash)]
-pub(crate) enum Player {
+pub enum Player {
     One,
     Two,
     Three,
 }
+
+impl From<u8> for Player {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => Player::One,
+            1 => Player::Two,
+            2 => Player::Three,
+            _ => panic!()
+        }
+    }
+}
+
 
 impl Player {
     pub(crate) fn get_next_player(&self) -> Player {
@@ -53,15 +79,17 @@ impl Player {
         }
     }
 }
-pub(crate) struct GlobalState {
+
+pub struct GlobalState {
     pub(crate) player_cards: (BitCards, BitCards, BitCards),
     pub(crate) skat: BitCards,
     pub(crate) alone_player: Player,
     pub(crate) variant: Variant,
     pub(crate) skat_points: u8,
 }
+
 impl GlobalState {
-    pub(crate) fn new(player_cards: (BitCards, BitCards, BitCards), skat: BitCards, alone_player: Player, variant: Variant) -> GlobalState {
+    pub fn new(player_cards: (BitCards, BitCards, BitCards), skat: BitCards, alone_player: Player, variant: Variant) -> GlobalState {
         GlobalState {
             player_cards,
             skat,
@@ -112,6 +140,7 @@ pub(crate) fn calculate_next_moves(current_cards: BitCards, suit_mask: Option<Bi
     }
 }
 
+
 pub(crate) fn calculate_who_won(current_played_cards: (BitCard, BitCard), last_card: BitCard, variant: &Variant) -> (BitCard, u8) {
     let winning_card = if current_played_cards.0.greater_than(current_played_cards.1, variant) {
         if current_played_cards.0.greater_than(last_card, variant) {
@@ -129,7 +158,7 @@ pub(crate) fn calculate_who_won(current_played_cards: (BitCard, BitCard), last_c
 
 #[cfg(test)]
 mod tests {
-    use crate::solver::bitboard::{BitCards, EMPTY_CARD, HEARTS_ASS, HEARTS_EIGHT, HEARTS_JACK, HEARTS_KING, HEARTS_NINE, HEARTS_QUEEN, HEARTS_SEVEN, HEARTS_TEN, KARO_ASS, KARO_EIGHT, KARO_JACK, KARO_KING, KARO_NINE, KARO_QUEEN, KARO_SEVEN, KARO_TEN, KREUZ_ASS, KREUZ_EIGHT, KREUZ_JACK, KREUZ_KING, KREUZ_NINE, KREUZ_QUEEN, KREUZ_SEVEN, KREUZ_TEN, PIQUS_ASS, PIQUS_EIGHT, PIQUS_JACK, PIQUS_KING, PIQUS_NINE, PIQUS_QUEEN, PIQUS_SEVEN, PIQUS_TEN};
+    use crate::solver::bitboard::{BitCards, HEARTS_ASS, HEARTS_EIGHT, HEARTS_JACK, HEARTS_KING, HEARTS_NINE, HEARTS_QUEEN, HEARTS_SEVEN, HEARTS_TEN, KARO_ASS, KARO_EIGHT, KARO_JACK, KARO_KING, KARO_NINE, KARO_QUEEN, KARO_SEVEN, KARO_TEN, KREUZ_ASS, KREUZ_EIGHT, KREUZ_JACK, KREUZ_KING, KREUZ_NINE, KREUZ_QUEEN, KREUZ_SEVEN, KREUZ_TEN, PIQUS_ASS, PIQUS_EIGHT, PIQUS_JACK, PIQUS_KING, PIQUS_NINE, PIQUS_QUEEN, PIQUS_SEVEN, PIQUS_TEN};
     use crate::solver::{GlobalState, Player, Variant};
     use crate::solver::synchronus::ab_tt::EnhancedSolver;
     use crate::solver::synchronus::local_state::LState;
@@ -143,7 +172,6 @@ mod tests {
         let player_three = KREUZ_JACK | KREUZ_TEN | KREUZ_KING | KREUZ_NINE | KREUZ_SEVEN | HEARTS_ASS |
             HEARTS_TEN | HEARTS_SEVEN | PIQUS_SEVEN | KARO_SEVEN;
         let skat = PIQUS_QUEEN | KARO_KING;
-
         let all_cards = player_one | player_two | player_three | skat;
         assert_eq!(all_cards.0, u32::MAX);
         assert_eq!((player_one & player_two).0, 0);
@@ -153,15 +181,9 @@ mod tests {
             (player_one, player_two, player_three),
             skat,
             Player::One,
-            Variant::Grand
+            Variant::Grand,
         );
-        let local_state = LState {
-            remaining_cards: player_one | player_two | player_three,
-            current_played_cards: (EMPTY_CARD, EMPTY_CARD),
-            current_player: Player::One,
-            current_suit: None,
-            achieved_points: 0,
-        };
+        let local_state = LState::new(player_one | player_two | player_three, Player::One);
         let skatpoints = global_state.skat_points as i8;
         let mut solver = EnhancedSolver {
             global_state,
@@ -198,13 +220,7 @@ mod tests {
             Player::Two,
             Variant::Grand,
         );
-        let local_state = LState {
-            remaining_cards: all,
-            current_played_cards: (EMPTY_CARD, EMPTY_CARD),
-            current_player: Player::One,
-            current_suit: None,
-            achieved_points: 0,
-        };
+        let local_state = LState::new(all, Player::One);
         //let result = minimax_with_alpha_beta(local_state,&global_state, 0, 120);
         let skat_points = global_state.skat_points;
         let mut solver = EnhancedSolver {
