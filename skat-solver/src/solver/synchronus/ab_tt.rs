@@ -201,6 +201,7 @@ impl Solver {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
     use crate::solver::bitboard::{BitCards, HEARTS_ASS, HEARTS_EIGHT, HEARTS_JACK, HEARTS_KING, HEARTS_NINE, HEARTS_QUEEN, HEARTS_SEVEN, HEARTS_TEN, KARO_ASS, KARO_EIGHT, KARO_JACK, KARO_KING, KARO_NINE, KARO_QUEEN, KARO_SEVEN, KARO_TEN, KREUZ_ASS, KREUZ_EIGHT, KREUZ_JACK, KREUZ_KING, KREUZ_NINE, KREUZ_QUEEN, KREUZ_SEVEN, KREUZ_TEN, PIQUS_ASS, PIQUS_EIGHT, PIQUS_JACK, PIQUS_KING, PIQUS_NINE, PIQUS_QUEEN, PIQUS_SEVEN, PIQUS_TEN};
     use crate::solver::{GlobalState, Player, Variant};
     use crate::solver::synchronus::ab_tt::Solver;
@@ -493,5 +494,80 @@ mod tests {
 
         //let result = minimax_v2(local_state, &global_state, 0, 120);
         assert_eq!(result.0, 4);
+    }
+
+
+    fn run_test(line: &str) -> Result<(), (u8, u8)> {
+        let data: Vec<&str> = line.split(',').collect();
+        let p1 = BitCards(data[0].parse::<u32>().unwrap());
+        let p2 = BitCards(data[1].parse::<u32>().unwrap());
+        let p3 = BitCards(data[2].parse::<u32>().unwrap());
+        let skat= BitCards(data[3].parse::<u32>().unwrap());
+        let current_player: Player = Player::from(data[4].parse::<u8>().unwrap());
+        let variant: Variant = Variant::from(data[5].parse::<u8>().unwrap());
+        let score = data[6].parse::<u8>().unwrap();
+        let local_state = LState::new(p1 | p2 | p3, current_player);
+        let global_state = GlobalState::new((p1, p2, p3), skat, Player::One, variant);
+        let mut solver = Solver {
+            global_state,
+            look_up_table: Default::default(),
+        };
+        let result = solver.ab_tt(local_state, 0, 120);
+        assert!((0..=120).contains(&result));
+        let result = result as u8;
+        if result == score {
+            return Ok(());
+        }
+        Err((result, score))
+    }
+
+
+    #[test]
+    fn ab_tt_normal_four_cards() {
+        let input = fs::read_to_string("data/four_cards.txt").unwrap();
+        let len = input.lines().count();
+        let mut successes = 0;
+
+        for line in input.lines() {
+            let result = run_test(line);
+            if let Ok(()) = result { successes +=1 }
+        }
+        assert_eq!(successes, len);
+    }
+    #[test]
+    fn ab_tt_normal_seven_cards() {
+        let input = fs::read_to_string("data/seven.txt").unwrap();
+        let len = input.lines().count();
+        let mut successes = 0;
+
+        for line in input.lines() {
+            let result = run_test(line);
+            if let Ok(()) = result { successes +=1 }
+        }
+        assert_eq!(successes, len);
+    }
+    #[test]
+    fn ab_tt_normal_five_cards() {
+        let input = fs::read_to_string("data/five_cards.txt").unwrap();
+        let len = input.lines().count();
+        let mut successes = 0;
+
+        for line in input.lines() {
+            let result = run_test(line);
+            if let Ok(()) = result { successes +=1 }
+        }
+        assert_eq!(successes, len);
+    }
+    #[test]
+    fn ab_tt_normal_six_cards() {
+        let input = fs::read_to_string("data/six_cards.txt").unwrap();
+        let len = input.lines().count();
+        let mut successes = 0;
+
+        for line in input.lines() {
+            let result = run_test(line);
+            if let Ok(()) = result { successes +=1 }
+        }
+        assert_eq!(successes, len);
     }
 }
