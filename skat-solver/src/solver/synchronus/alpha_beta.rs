@@ -22,7 +22,7 @@ impl LocalState {
         LocalState {
             remaining_cards,
             current_played_cards: (EMPTY_CARD, EMPTY_CARD),
-            current_player: current_player,
+            current_player,
             current_suit: None,
             current_points_alone: 0
         }
@@ -194,9 +194,7 @@ mod tests {
     use std::fs;
     use crate::solver::bitboard::{BitCards, HEARTS_ASS, HEARTS_EIGHT, HEARTS_JACK, HEARTS_KING, HEARTS_NINE, HEARTS_QUEEN, HEARTS_SEVEN, HEARTS_TEN, KARO_ASS, KARO_EIGHT, KARO_JACK, KARO_KING, KARO_NINE, KARO_QUEEN, KARO_SEVEN, KARO_TEN, KREUZ_ASS, KREUZ_EIGHT, KREUZ_JACK, KREUZ_KING, KREUZ_NINE, KREUZ_QUEEN, KREUZ_SEVEN, KREUZ_TEN, PIQUS_ASS, PIQUS_EIGHT, PIQUS_JACK, PIQUS_KING, PIQUS_NINE, PIQUS_QUEEN, PIQUS_SEVEN, PIQUS_TEN};
     use crate::solver::{GlobalState, Player, Variant};
-    use crate::solver::synchronus::ab::ab;
     use crate::solver::synchronus::alpha_beta::{LocalState, minimax};
-    use crate::solver::synchronus::local_state::LState;
     use crate::solver::Variant::Clubs;
 
 

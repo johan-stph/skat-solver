@@ -79,38 +79,6 @@ mod tests {
         assert_eq!(result.0, 78)
     }
 
-    #[test]
-    #[ignore]
-    fn ab_normal_long() {
-        let player_2 =
-            BitCards(
-                HEARTS_JACK.0 | KREUZ_ASS.0 | KREUZ_TEN.0 | KREUZ_SEVEN.0 | KARO_ASS.0 |
-                    KARO_SEVEN.0 | KARO_NINE.0 | PIQUS_ASS.0 | PIQUS_KING.0 | PIQUS_QUEEN.0);
-        let player_1 =
-            BitCards(
-                KARO_JACK.0 | KREUZ_KING.0 | KREUZ_EIGHT.0 | HEARTS_ASS.0 | HEARTS_SEVEN.0 |
-                    PIQUS_TEN.0 | PIQUS_SEVEN.0 | KARO_TEN.0 | KARO_QUEEN.0 | KARO_EIGHT.0);
-        let player_3 =
-            BitCards(
-                KREUZ_JACK.0 | PIQUS_JACK.0 | KREUZ_QUEEN.0 | KREUZ_NINE.0 | HEARTS_KING.0 |
-                    HEARTS_QUEEN.0 | HEARTS_NINE.0 | HEARTS_EIGHT.0 | PIQUS_NINE.0 | KARO_KING.0);
-        let skat = BitCards(
-            HEARTS_TEN.0 | PIQUS_EIGHT.0
-        );
-        let all = player_1 | player_2 | player_3;
-        assert_eq!(all.0 | skat.0, u32::MAX);
-        let global_state = GlobalState::new(
-            (player_1, player_2, player_3),
-            skat,
-            Player::Two,
-            Variant::Grand,
-        );
-        let local_state = LState::new(all, Player::One);
-        let skat_points = global_state.skat_points;
-        let result = ab(local_state, &global_state, 0, 120);
-        assert_eq!(result.0 + skat_points as i8, 63)
-    }
-
     fn run_test(line: &str) -> (u8, u8) {
         let data: Vec<&str> = line.split(',').collect();
         let p1 = BitCards(data[0].parse::<u32>().unwrap());

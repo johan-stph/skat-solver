@@ -31,19 +31,19 @@ impl From<u8> for Variant {
 impl Variant {
     pub(crate) fn get_binary_mask(&self) -> u32 {
         match self {
-            Variant::Grand => {
+            Grand => {
                 GRAND_MASK
             }
-            Variant::Diamonds => {
+            Diamonds => {
                 KARO_MASK | GRAND_MASK
             }
-            Variant::Hearts => {
+            Hearts => {
                 HEARTS_MASK | GRAND_MASK
             }
-            Variant::Spades => {
+            Spades => {
                 bitboard::PIQUS_MASK | GRAND_MASK
             }
-            Variant::Clubs => {
+            Clubs => {
                 bitboard::KREUZ_MASK | GRAND_MASK
             }
         }
@@ -158,7 +158,7 @@ pub(crate) fn calculate_who_won(current_played_cards: (BitCard, BitCard), last_c
 
 #[cfg(test)]
 mod tests {
-    use crate::solver::bitboard::{BitCards, HEARTS_ASS, HEARTS_EIGHT, HEARTS_JACK, HEARTS_KING, HEARTS_NINE, HEARTS_QUEEN, HEARTS_SEVEN, HEARTS_TEN, KARO_ASS, KARO_EIGHT, KARO_JACK, KARO_KING, KARO_NINE, KARO_QUEEN, KARO_SEVEN, KARO_TEN, KREUZ_ASS, KREUZ_EIGHT, KREUZ_JACK, KREUZ_KING, KREUZ_NINE, KREUZ_QUEEN, KREUZ_SEVEN, KREUZ_TEN, PIQUS_ASS, PIQUS_EIGHT, PIQUS_JACK, PIQUS_KING, PIQUS_NINE, PIQUS_QUEEN, PIQUS_SEVEN, PIQUS_TEN};
+    use crate::solver::bitboard::{HEARTS_ASS, HEARTS_EIGHT, HEARTS_JACK, HEARTS_KING, HEARTS_NINE, HEARTS_QUEEN, HEARTS_SEVEN, HEARTS_TEN, KARO_ASS, KARO_EIGHT, KARO_JACK, KARO_KING, KARO_NINE, KARO_QUEEN, KARO_SEVEN, KARO_TEN, KREUZ_ASS, KREUZ_EIGHT, KREUZ_JACK, KREUZ_KING, KREUZ_NINE, KREUZ_QUEEN, KREUZ_SEVEN, KREUZ_TEN, PIQUS_ASS, PIQUS_EIGHT, PIQUS_JACK, PIQUS_KING, PIQUS_NINE, PIQUS_QUEEN, PIQUS_SEVEN, PIQUS_TEN};
     use crate::solver::{GlobalState, Player, Variant};
     use crate::solver::synchronus::ab_tt::EnhancedSolver;
     use crate::solver::synchronus::local_state::LState;
@@ -196,21 +196,17 @@ mod tests {
 
     #[test]
     fn long_solver_two() {
+        //verified
         let player_2 =
-            BitCards(
-                HEARTS_JACK.0 | KREUZ_ASS.0 | KREUZ_TEN.0 | KREUZ_SEVEN.0 | KARO_ASS.0 |
-                    KARO_SEVEN.0 | KARO_NINE.0 | PIQUS_ASS.0 | PIQUS_KING.0 | PIQUS_QUEEN.0);
+                HEARTS_JACK | KREUZ_ASS | KREUZ_TEN | KREUZ_SEVEN | KARO_ASS |
+                    KARO_SEVEN | KARO_NINE | PIQUS_ASS | PIQUS_KING | PIQUS_QUEEN;
         let player_1 =
-            BitCards(
-                KARO_JACK.0 | KREUZ_KING.0 | KREUZ_EIGHT.0 | HEARTS_ASS.0 | HEARTS_SEVEN.0 |
-                    PIQUS_TEN.0 | PIQUS_SEVEN.0 | KARO_TEN.0 | KARO_QUEEN.0 | KARO_EIGHT.0);
+                KARO_JACK | KREUZ_KING | KREUZ_EIGHT | HEARTS_ASS | HEARTS_SEVEN |
+                    PIQUS_TEN | PIQUS_SEVEN | KARO_TEN | KARO_QUEEN| KARO_EIGHT;
         let player_3 =
-            BitCards(
-                KREUZ_JACK.0 | PIQUS_JACK.0 | KREUZ_QUEEN.0 | KREUZ_NINE.0 | HEARTS_KING.0 |
-                    HEARTS_QUEEN.0 | HEARTS_NINE.0 | HEARTS_EIGHT.0 | PIQUS_NINE.0 | KARO_KING.0);
-        let skat = BitCards(
-            HEARTS_TEN.0 | PIQUS_EIGHT.0
-        );
+                KREUZ_JACK | PIQUS_JACK | KREUZ_QUEEN | KREUZ_NINE | HEARTS_KING |
+                    HEARTS_QUEEN| HEARTS_NINE | HEARTS_EIGHT | PIQUS_NINE | KARO_KING;
+        let skat = HEARTS_TEN | PIQUS_EIGHT;
         let all = player_1 | player_2 | player_3;
         assert_eq!(all.0 | skat.0, u32::MAX);
 
@@ -221,7 +217,6 @@ mod tests {
             Variant::Grand,
         );
         let local_state = LState::new(all, Player::One);
-        //let result = minimax_with_alpha_beta(local_state,&global_state, 0, 120);
         let skat_points = global_state.skat_points;
         let mut solver = EnhancedSolver {
             global_state,
