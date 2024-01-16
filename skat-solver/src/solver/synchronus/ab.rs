@@ -105,7 +105,7 @@ mod tests {
     }
     #[test]
     fn ab_normal_seven_cards() {
-        let input = fs::read_to_string("data/seven.txt").unwrap();
+        let input = fs::read_to_string("data/seven_cards.txt").unwrap();
         for line in input.lines() {
             let result = run_test(line);
             assert_eq!(result.0, result.1)
@@ -122,6 +122,30 @@ mod tests {
     #[test]
     fn ab_normal_six_cards() {
         let input = fs::read_to_string("data/six_cards.txt").unwrap();
+        for line in input.lines() {
+            let result = run_test(line);
+            assert_eq!(result.0, result.1)
+        }
+    }
+    #[test]
+    fn ab_normal_one_cards() {
+        let input = fs::read_to_string("data/one_cards.txt").unwrap();
+        for line in input.lines() {
+            let result = run_test(line);
+            assert_eq!(result.0, result.1)
+        }
+    }
+    #[test]
+    fn ab_normal_two_cards() {
+        let input = fs::read_to_string("data/two_cards.txt").unwrap();
+        for line in input.lines() {
+            let result = run_test(line);
+            assert_eq!(result.0, result.1)
+        }
+    }
+    #[test]
+    fn ab_normal_three_cards() {
+        let input = fs::read_to_string("data/three_cards.txt").unwrap();
         for line in input.lines() {
             let result = run_test(line);
             assert_eq!(result.0, result.1)

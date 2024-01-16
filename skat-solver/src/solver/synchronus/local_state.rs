@@ -28,6 +28,7 @@ impl LState {
         (self.remaining_cards.0, self.current_player)
     }
 
+    #[inline(always)]
     pub(crate) fn get_hash_better(&self, global_state: &GlobalState) -> u32 {
         match self.current_player {
             Player::One => {
@@ -42,14 +43,17 @@ impl LState {
         }
     }
 
+    #[inline(always)]
     pub(crate) fn is_full_node(&self) -> bool {
-        self.current_played_cards.0 == EMPTY_CARD
+        self.current_suit.is_none()
     }
 }
 
 
 
 impl LState {
+
+    #[inline(always)]
     pub(crate) fn is_terminal(&self) -> bool {
         self.remaining_cards.0 == 0
     }
@@ -67,6 +71,8 @@ impl LState {
             Player::Three => global_state.player_cards.2 & self.remaining_cards,
         }
     }
+
+    #[inline(always)]
     pub(crate) fn get_next_states(&self, global_state: &GlobalState) -> ArrayVec<(LState, u8), 10> {
         let mut next_states: ArrayVec<(LState, u8), 10> = ArrayVec::new();
         //get available cards
@@ -118,8 +124,6 @@ impl LState {
         }
         next_states
     }
-
-
 }
 
 

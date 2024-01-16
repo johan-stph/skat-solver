@@ -536,7 +536,7 @@ mod tests {
     }
     #[test]
     fn ab_tt_normal_seven_cards() {
-        let input = fs::read_to_string("data/seven.txt").unwrap();
+        let input = fs::read_to_string("data/seven_cards.txt").unwrap();
         let len = input.lines().count();
         let mut successes = 0;
 
@@ -561,6 +561,45 @@ mod tests {
     #[test]
     fn ab_tt_normal_six_cards() {
         let input = fs::read_to_string("data/six_cards.txt").unwrap();
+        let len = input.lines().count();
+        let mut successes = 0;
+
+        for line in input.lines() {
+            let result = run_test(line);
+            if let Ok(()) = result { successes +=1 }
+        }
+        assert_eq!(successes, len);
+    }
+
+    #[test]
+    fn ab_tt_normal_one_cards() {
+        let input = fs::read_to_string("data/one_cards.txt").unwrap();
+        let len = input.lines().count();
+        let mut successes = 0;
+
+        for line in input.lines() {
+            let result = run_test(line);
+            if let Ok(()) = result { successes +=1 }
+        }
+        assert_eq!(successes, len);
+    }
+
+    #[test]
+    fn ab_tt_normal_two_cards() {
+        let input = fs::read_to_string("data/two_cards.txt").unwrap();
+        let len = input.lines().count();
+        let mut successes = 0;
+
+        for line in input.lines() {
+            let result = run_test(line);
+            if let Ok(()) = result { successes +=1 }
+        }
+        assert_eq!(successes, len);
+    }
+
+    #[test]
+    fn ab_tt_normal_three_cards() {
+        let input = fs::read_to_string("data/three_cards.txt").unwrap();
         let len = input.lines().count();
         let mut successes = 0;
 

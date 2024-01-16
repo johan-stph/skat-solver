@@ -9,7 +9,7 @@ use skat_solver::solver::synchronus::ab::ab;
 use skat_solver::solver::synchronus::local_state::LState;
 
 fn main() {
-    create_n_cards(100, 7);
+    create_n_cards(100, 1);
 }
 
 fn create_cards(cards: &[u32]) -> BitCards {
@@ -23,7 +23,7 @@ fn create_cards(cards: &[u32]) -> BitCards {
 
 fn create_n_cards(n: usize, amount: usize) {
     let mut rng = thread_rng();
-    let mut file = File::create("seven.txt").unwrap();
+    let mut file = File::create("one_cards.txt").unwrap();
 
     for _ in 0..n {
         for variant in [Variant::Grand, Variant::Clubs, Variant::Spades, Variant::Hearts, Variant::Diamonds] {
