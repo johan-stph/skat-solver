@@ -7,6 +7,7 @@ use crate::solver::synchronus::ab_tt::Bounds::{LowerBound, UpperBound, Valid};
 use crate::solver::synchronus::local_state::LState;
 
 
+#[derive(Debug)]
 pub enum Bounds {
     Valid,
     LowerBound,
@@ -26,6 +27,10 @@ impl EnhancedSolver {
             self.look_up_table.insert(local_state.get_hash_better(&self.global_state), (score, bound));
         }
     }
+    fn insert(&mut self, pos: u32, score: i8, bound: Bounds) {
+        self.look_up_table.insert(pos, (score, bound));
+    }
+
     pub fn ab_tt(&mut self, local_state: LState, agoof: i8, bgoof: i8) -> i8 {
         if local_state.is_terminal() {
             return 0;
@@ -77,7 +82,23 @@ impl EnhancedSolver {
                 }
             }
         }
-        self.try_insert(&local_state, result, Valid);
+        if !local_state.is_full_node() {
+            return result;
+        }
+
+        if local_state.is_max_node(&self.global_state) {
+            if result != agoof {
+                self.insert(local_state.get_hash_better(&self.global_state), result, Valid);
+            }
+            else {
+                self.insert(local_state.get_hash_better(&self.global_state), result, UpperBound);
+            }
+        } else if result != bgoof {
+            self.insert(local_state.get_hash_better(&self.global_state), result, Valid);
+        }
+        else {
+            self.insert(local_state.get_hash_better(&self.global_state), result, LowerBound);
+        }
         result
     }
 }
@@ -146,7 +167,13 @@ impl Solver {
                 }
             }
         }
-        self.try_insert(&local_state, result, Valid);
+        if local_state.is_max_node(&self.global_state) {
+            if result != agoof {
+                self.try_insert(&local_state, result, Valid);
+            }
+        } else if result != bgoof {
+            self.try_insert(&local_state, result, Valid)
+        }
         result
     }
 
@@ -189,10 +216,14 @@ impl Solver {
 
         }
         if local_state.is_max_node(&self.global_state) {
-            self.try_insert(&local_state, new_alpha as i32, Valid);
+            if new_alpha != alpha {
+                self.try_insert(&local_state, new_alpha as i32, Valid);
+            }
             (new_alpha, optimal_move)
         } else {
-            self.try_insert(&local_state, new_beta as i32, Valid);
+            if new_beta != beta {
+                self.try_insert(&local_state, new_beta as i32, Valid);
+            }
             (new_beta, optimal_move)
         }
     }
@@ -496,6 +527,28 @@ mod tests {
         assert_eq!(result.0, 4);
     }
 
+    #[test]
+    fn ab_tt_three_cards_failing() {
+        let p1 = PIQUS_JACK | PIQUS_KING | HEARTS_SEVEN;
+        let p2 = KREUZ_QUEEN | KREUZ_EIGHT | PIQUS_NINE;
+        let p3 = HEARTS_JACK | HEARTS_QUEEN | KARO_QUEEN;
+        let local_state = LState::new(p1 | p2 | p3, Player::Two);
+        let global_state = GlobalState::new((p1, p2, p3), BitCards(0), Player::One, Variant::Hearts);
+        let mut solver = Solver {
+            global_state,
+            look_up_table: Default::default(),
+        };
+        let result = solver.minimax_with_alpha_beta_tt(local_state, 0, 120);
+
+        let s7 = LState::new(PIQUS_JACK | KREUZ_QUEEN | HEARTS_QUEEN, Player::Three);
+        let s9 = LState::new(PIQUS_JACK | KREUZ_EIGHT | HEARTS_JACK, Player::Three);
+        let s10 = LState::new(PIQUS_JACK | KREUZ_EIGHT | HEARTS_QUEEN, Player::Three);
+        let hash1 = solver.look_up_table.get(&s7.get_hash());
+        let s9_hash = solver.look_up_table.get(&s9.get_hash());
+        let s10_hash = solver.look_up_table.get(&s10.get_hash());
+
+    }
+
 
     fn run_test(line: &str) -> Result<(), (u8, u8)> {
         let data: Vec<&str> = line.split(',').collect();
@@ -518,6 +571,13 @@ mod tests {
         if result == score {
             return Ok(());
         }
+        /*
+        dbg!(result);
+        dbg!(score);
+        dbg!(local_state);
+        dbg!(solver.global_state);
+        //panic!();
+         */
         Err((result, score))
     }
 

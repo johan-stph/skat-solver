@@ -80,6 +80,7 @@ impl Player {
     }
 }
 
+#[derive(Debug)]
 pub struct GlobalState {
     pub(crate) player_cards: (BitCards, BitCards, BitCards),
     pub(crate) skat: BitCards,
