@@ -142,20 +142,6 @@ pub(crate) fn calculate_next_moves(current_cards: BitCards, suit_mask: Option<Bi
 }
 
 
-pub(crate) fn calculate_who_won(current_played_cards: (BitCard, BitCard), last_card: BitCard, variant: &Variant) -> (BitCard, u8) {
-    let winning_card = if current_played_cards.0.greater_than(current_played_cards.1, variant) {
-        if current_played_cards.0.greater_than(last_card, variant) {
-            current_played_cards.0
-        } else {
-            last_card
-        }
-    } else if current_played_cards.1.greater_than(last_card, variant) {
-        current_played_cards.1
-    } else {
-        last_card
-    };
-    (winning_card, current_played_cards.0.get_point() + current_played_cards.1.get_point() + last_card.get_point())
-}
 
 #[cfg(test)]
 mod tests {

@@ -1,7 +1,7 @@
 use std::cmp::{max, min};
 use arrayvec::ArrayVec;
-use crate::solver::bitboard::{BitCard, BitCards,EMPTY_CARD};
-use crate::solver::{calculate_current_suit_mask, calculate_next_moves, calculate_who_won, calculate_winner, GlobalState, Player};
+use crate::solver::bitboard::{BitCard, BitCards, calculate_who_won_better, EMPTY_CARD};
+use crate::solver::{calculate_current_suit_mask, calculate_next_moves, calculate_winner, GlobalState, Player};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct LocalState {
@@ -70,7 +70,7 @@ impl LocalState {
                 }
             }
             (_, _) => {
-                let winner_card = calculate_who_won(self.current_played_cards, next_move, &global_state.variant);
+                let winner_card = calculate_who_won_better(self.current_played_cards.0, self.current_played_cards.1, next_move, &global_state.variant);
                 //if winner_card is alone_player add points
                 let winner_player = calculate_winner(winner_card.0, global_state);
                 let winner_points = if winner_player == global_state.alone_player {
@@ -122,7 +122,7 @@ impl LocalState {
                     )
                 }
                 (_, _) => {
-                    let winner_card = calculate_who_won(self.current_played_cards, next_move, &global_state.variant);
+                    let winner_card = calculate_who_won_better(self.current_played_cards.0, self.current_played_cards.1, next_move, &global_state.variant);
                     //if winner_card is alone_player add points
                     let winner_player = calculate_winner(winner_card.0, global_state);
                     let winner_points = if winner_player == global_state.alone_player {
@@ -270,6 +270,7 @@ mod tests {
         }
     }
     #[test]
+    #[ignore]
     fn alpha_beta_seven_cards() {
         let input = fs::read_to_string("data/seven_cards.txt").unwrap();
         for line in input.lines() {

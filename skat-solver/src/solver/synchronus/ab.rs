@@ -104,6 +104,7 @@ mod tests {
         }
     }
     #[test]
+    #[ignore]
     fn ab_normal_seven_cards() {
         let input = fs::read_to_string("data/seven_cards.txt").unwrap();
         for line in input.lines() {

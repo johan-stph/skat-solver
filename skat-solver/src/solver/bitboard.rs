@@ -1,3 +1,4 @@
+use std::cmp::max;
 use std::fmt::Debug;
 use std::ops::{BitAnd, BitOr};
 use crate::solver::Variant;
@@ -16,6 +17,8 @@ const KARO_TRUMPF_MASK: u32 = KARO_MASK | GRAND_MASK;
 const SEVEN_MASK: u32 = get_binary_mask_for_rank(1);
 const EIGHT_MASK: u32 = get_binary_mask_for_rank(2);
 const NINE_MASK: u32 = get_binary_mask_for_rank(3);
+
+const SEVEN_OR_EIGHT_OR_NINE: u32 = SEVEN_MASK | EIGHT_MASK | NINE_MASK;
 const QUEEN_MASK: u32 = get_binary_mask_for_rank(4);
 const KING_MASK: u32 = get_binary_mask_for_rank(5);
 const TEN_MASK: u32 = get_binary_mask_for_rank(6);
@@ -216,24 +219,11 @@ impl BitCard {
         }
         KARO_MASK
     }
-
-    pub fn greater_than(&self, other: BitCard, variant: &Variant) -> bool {
-        let mask = variant.get_binary_mask();
-        let card1 = self.0 & mask;
-        let card2 = other.0 & mask;
-
-        if card1 != 0 || card2 != 0 {
-            return card1 > card2;
-        }
-        let other = other.0 & self.get_color_mask();
-        self.0 > other
-    }
-
     pub(crate) fn get_point(&self) -> u8 {
         if self.0 & GRAND_MASK != 0 {
             return 2
         }
-        if self.0 & (SEVEN_MASK | EIGHT_MASK | NINE_MASK) != 0 {
+        if self.0 & SEVEN_OR_EIGHT_OR_NINE != 0 {
             return 0
         }
         if self.0 & TEN_MASK != 0 {
@@ -250,6 +240,34 @@ impl BitCard {
         }
         panic!("Should not happen")
     }
+
+    pub fn greater_than(&self, other: BitCard, variant: &Variant) -> bool {
+        let mask = variant.get_binary_mask();
+        let card1 = self.0 & mask;
+        let card2 = other.0 & mask;
+
+        if card1 != 0 || card2 != 0 {
+            return card1 > card2;
+        }
+        let other = other.0 & self.get_color_mask();
+        self.0 > other
+    }
+
+}
+
+#[inline(always)]
+pub(crate) fn calculate_who_won_better(first : BitCard, second: BitCard, third: BitCard, variant: &Variant) -> (BitCard, u8) {
+    let points = first.get_point() + second.get_point() + third.get_point();
+    let mask = variant.get_binary_mask();
+    let first_tr = first.0 & mask;
+    let second_tr = second.0 & mask;
+    let third_tr = third.0 & mask;
+    if (first_tr | second_tr | third_tr) == 0 {
+        let second_col = second.0 & first.get_color_mask();
+        let thrid_col = third.0 & first.get_color_mask();
+        return (BitCard(max(max(first.0, second_col), thrid_col)), points)
+    }
+    (BitCard(max(max(first_tr, second_tr), third_tr)), points)
 }
 
 
@@ -258,8 +276,8 @@ impl BitCard {
 
 #[cfg(test)]
 mod tests {
-    use crate::solver::bitboard::{ HEARTS_EIGHT, HEARTS_QUEEN, HEARTS_TEN, KARO_EIGHT, KARO_NINE, KARO_SEVEN, KREUZ_ASS, KREUZ_EIGHT, KREUZ_KING, KREUZ_TEN, PIQUS_ASS, PIQUS_KING, PIQUS_TEN};
-    use crate::solver::{calculate_who_won, Variant};
+    use crate::solver::bitboard::{calculate_who_won_better, HEARTS_EIGHT, HEARTS_QUEEN, HEARTS_TEN, KARO_EIGHT, KARO_NINE, KARO_SEVEN, KREUZ_ASS, KREUZ_EIGHT, KREUZ_KING, KREUZ_TEN, PIQUS_ASS, PIQUS_KING, PIQUS_TEN};
+    use crate::solver::{Variant};
 
     #[test]
     fn cards_with_same_suit() {
@@ -268,7 +286,7 @@ mod tests {
         let loser_one = HEARTS_QUEEN;
         let loser_two = HEARTS_EIGHT;
         for variant in &[Variant::Clubs, Variant::Grand, Variant::Spades, Variant::Hearts, Variant::Diamonds] {
-            let result = calculate_who_won((winner, loser_one), loser_two, variant);
+            let result = calculate_who_won_better(winner, loser_one, loser_two, variant);
             assert_eq!(result.0, winner);
             assert_eq!(result.1, 13);
         }
@@ -277,7 +295,7 @@ mod tests {
         let loser_one = KREUZ_KING;
         let loser_two = KREUZ_EIGHT;
         for variant in &[Variant::Clubs, Variant::Grand, Variant::Spades, Variant::Hearts, Variant::Diamonds] {
-            let result = calculate_who_won((winner, loser_one), loser_two, variant);
+            let result = calculate_who_won_better(winner, loser_one, loser_two, variant);
             assert_eq!(result.0, winner);
             assert_eq!(result.1, 15);
         }
@@ -285,7 +303,7 @@ mod tests {
         let loser_one = PIQUS_TEN;
         let loser_two = PIQUS_KING;
         for variant in &[Variant::Clubs, Variant::Grand, Variant::Spades, Variant::Hearts, Variant::Diamonds] {
-            let result = calculate_who_won((loser_two, loser_one), winner, variant);
+            let result = calculate_who_won_better(loser_two, loser_one, winner, variant);
             assert_eq!(result.0, winner);
             assert_eq!(result.1, 25);
         }
@@ -294,7 +312,7 @@ mod tests {
         let loser_one = KARO_SEVEN;
         let loser_two = KARO_EIGHT;
         for variant in &[Variant::Clubs, Variant::Grand, Variant::Spades, Variant::Hearts, Variant::Diamonds] {
-            let result = calculate_who_won((loser_two, loser_one), winner, variant);
+            let result = calculate_who_won_better(loser_two, loser_one, winner, variant);
             assert_eq!(result.0, winner);
             assert_eq!(result.1, 0);
         }
@@ -305,7 +323,7 @@ mod tests {
         let winner = KREUZ_TEN;
         let loser_one = PIQUS_ASS;
         let loser_two = PIQUS_KING;
-        let result = calculate_who_won((loser_two, loser_one), winner, &Variant::Clubs);
+        let result = calculate_who_won_better(loser_two, loser_one, winner, &Variant::Clubs);
         assert_eq!(result.0, winner);
         assert_eq!(result.1, 25);
 
