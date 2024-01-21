@@ -1,7 +1,5 @@
-
 use std::cmp::{max, min};
 use std::collections::HashMap;
-use fxhash::FxHashMap;
 use crate::solver::{GlobalState, Player};
 use crate::solver::synchronus::ab_tt::Bounds::{LowerBound, UpperBound, Valid};
 use crate::solver::synchronus::local_state::LState;
@@ -14,109 +12,26 @@ pub enum Bounds {
     UpperBound
 }
 
-
-
-pub struct EnhancedSolver {
-    pub global_state: GlobalState,
-    pub look_up_table: FxHashMap<u32, (i8, Bounds)>
-}
-
-impl EnhancedSolver {
-    fn try_insert(&mut self, local_state: &LState, score: i8, bound: Bounds) {
-        if local_state.is_full_node() {
-            self.look_up_table.insert(local_state.get_hash_better(&self.global_state), (score, bound));
-        }
-    }
-    fn insert(&mut self, pos: u32, score: i8, bound: Bounds) {
-        self.look_up_table.insert(pos, (score, bound));
-    }
-
-    pub fn ab_tt(&mut self, local_state: LState, agoof: i8, bgoof: i8) -> i8 {
-        if local_state.is_terminal() {
-            return 0;
-        }
-        let mut new_alpha = agoof;
-        let mut new_beta = bgoof;
-
-        if local_state.is_full_node() {
-            if let Some(result) = self.look_up_table.get(&local_state.get_hash_better(&self.global_state)) {
-                match result.1 {
-                    Valid => {
-                        return max(0, result.0)
-                    }
-                    LowerBound => {
-                        new_alpha = max(new_alpha, result.0)
-                    }
-                    UpperBound => {
-                        new_beta = min(new_beta, result.0)
-                    }
-                }
-                if new_alpha >= new_beta {
-                    return result.0
-                }
-            }
-        }
-        let mut result;
-        if local_state.is_max_node(&self.global_state) {
-            result = new_alpha;
-        } else {
-            result = new_beta;
-        }
-
-        for (next_state, achieved_points) in local_state.get_next_states(&self.global_state) {
-            let t_q = achieved_points as i8;
-            if local_state.is_max_node(&self.global_state) {
-                let succ_val= t_q +
-                    self.ab_tt(next_state, result - t_q, new_beta - t_q);
-                result = max(result, succ_val);
-                if result >= new_beta {
-                    self.try_insert(&local_state, result, LowerBound);
-                    return result
-                }
-            } else {
-                let succ_val = t_q + self.ab_tt(next_state, new_alpha - t_q, result - t_q);
-                result = min(result, succ_val);
-                if result <= new_alpha {
-                    self.try_insert(&local_state, result, UpperBound);
-                    return result
-                }
-            }
-        }
-        if !local_state.is_full_node() {
-            return result;
-        }
-
-        if local_state.is_max_node(&self.global_state) {
-            if result != agoof {
-                self.insert(local_state.get_hash_better(&self.global_state), result, Valid);
-            }
-            else {
-                self.insert(local_state.get_hash_better(&self.global_state), result, UpperBound);
-            }
-        } else if result != bgoof {
-            self.insert(local_state.get_hash_better(&self.global_state), result, Valid);
-        }
-        else {
-            self.insert(local_state.get_hash_better(&self.global_state), result, LowerBound);
-        }
-        result
-    }
-}
-
-
-pub struct Solver {
+pub struct DefaultSolver {
     pub global_state: GlobalState,
     pub look_up_table: HashMap<(u32, Player), (i8, Bounds)>
 }
 
 
-impl Solver {
+impl DefaultSolver {
+
+
+    pub fn solve(&mut self, local_state: LState) -> i8 {
+        self.ab_tt(local_state, 0, 120) + self.global_state.skat_points as i8
+    }
+
+    
     fn try_insert(&mut self, local_state: &LState, score: i8, bound: Bounds) {
         if local_state.is_full_node() {
             self.look_up_table.insert(local_state.get_hash(), (score, bound));
         }
     }
-    pub fn ab_tt(&mut self, local_state: LState, agoof: i8, bgoof: i8) -> i8 {
+    fn ab_tt(&mut self, local_state: LState, agoof: i8, bgoof: i8) -> i8 {
         if local_state.is_terminal() {
             return 0;
         }
@@ -185,57 +100,9 @@ impl Solver {
         }
         result
     }
-
-
-    pub fn minimax_with_alpha_beta_tt(&mut self, local_state: LState, alpha: i8, beta: i8) -> (i8, Option<LState>) {
-        if local_state.is_terminal() {
-            return (0, None);
-        }
-        let mut new_alpha = alpha;
-        let mut new_beta = beta;
-
-        if local_state.is_full_node() {
-            if let Some(result) = self.look_up_table.get(&local_state.get_hash()) {
-                if let Valid = result.1 {
-                    return (result.0 as i8, None)
-                }
-            }
-        };
-        let mut optimal_move: Option<LState> = None;
-
-        for (next_state, achieved_points) in local_state.get_next_states(&self.global_state) {
-            let achieved = achieved_points as i8;
-            let poss_alpha_or_beta = achieved + self.minimax_with_alpha_beta_tt(next_state,
-                                                                                new_alpha - achieved,
-                                                                                new_beta - achieved).0;
-            if local_state.is_max_node(&self.global_state) {
-                if poss_alpha_or_beta > new_alpha {
-                    new_alpha = poss_alpha_or_beta;
-                    optimal_move = Some(next_state);
-                }
-            } else {
-                if poss_alpha_or_beta < new_beta {
-                    new_beta = poss_alpha_or_beta;
-                    optimal_move = Some(next_state)
-                }
-            }
-            if new_alpha >= new_beta {
-                break
-            }
-        }
-        if local_state.is_max_node(&self.global_state) {
-            if new_alpha != alpha {
-                self.try_insert(&local_state, new_alpha, Valid);
-            }
-            (new_alpha, optimal_move)
-        } else {
-            if new_beta != beta {
-                self.try_insert(&local_state, new_beta, Valid);
-            }
-            (new_beta, optimal_move)
-        }
-    }
 }
+
+
 
 
 #[cfg(test)]
@@ -243,7 +110,7 @@ mod tests {
     use std::fs;
     use crate::solver::bitboard::{BitCards, HEARTS_ASS, HEARTS_EIGHT, HEARTS_JACK, HEARTS_KING, HEARTS_NINE, HEARTS_QUEEN, HEARTS_SEVEN, HEARTS_TEN, KARO_ASS, KARO_EIGHT, KARO_JACK, KARO_KING, KARO_NINE, KARO_QUEEN, KARO_SEVEN, KARO_TEN, KREUZ_ASS, KREUZ_EIGHT, KREUZ_JACK, KREUZ_KING, KREUZ_NINE, KREUZ_QUEEN, KREUZ_SEVEN, KREUZ_TEN, PIQUS_ASS, PIQUS_EIGHT, PIQUS_JACK, PIQUS_KING, PIQUS_NINE, PIQUS_QUEEN, PIQUS_SEVEN, PIQUS_TEN};
     use crate::solver::{GlobalState, Player, Variant};
-    use crate::solver::synchronus::ab_tt::Solver;
+    use crate::solver::synchronus::ab_tt::DefaultSolver;
     use crate::solver::synchronus::local_state::LState;
 
     #[test]
@@ -263,7 +130,7 @@ mod tests {
         );
         let local_state = LState::new(all_cards, Player::One);
 
-        let mut solver = Solver {
+        let mut solver = DefaultSolver {
             global_state,
             look_up_table: Default::default(),
         };
@@ -297,7 +164,7 @@ mod tests {
             Variant::Clubs,
         );
         let local_state = LState::new(all_cards, Player::One);
-        let mut solver = Solver {
+        let mut solver = DefaultSolver {
             global_state,
             look_up_table: Default::default(),
         };
@@ -318,7 +185,7 @@ mod tests {
         let score = data[6].parse::<u8>().unwrap();
         let local_state = LState::new(p1 | p2 | p3, current_player);
         let global_state = GlobalState::new((p1, p2, p3), skat, Player::One, variant);
-        let mut solver = Solver {
+        let mut solver = DefaultSolver {
             global_state,
             look_up_table: Default::default(),
         };

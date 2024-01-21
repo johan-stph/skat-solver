@@ -5,11 +5,11 @@ use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use skat_solver::solver::bitboard::{BitCard, BitCards};
 use skat_solver::solver::{GlobalState, Player, Variant};
-use skat_solver::solver::synchronus::ab::ab;
+use skat_solver::solver::synchronus::ab_tt::DefaultSolver;
 use skat_solver::solver::synchronus::local_state::LState;
 
 fn main() {
-    create_n_cards(100, 1);
+    create_n_cards(10, 8);
 }
 
 fn create_cards(cards: &[u32]) -> BitCards {
@@ -23,13 +23,10 @@ fn create_cards(cards: &[u32]) -> BitCards {
 
 fn create_n_cards(n: usize, amount: usize) {
     let mut rng = thread_rng();
-    let mut file = File::create("one_cards.txt").unwrap();
-
+    let mut file = File::create("eight_cards.txt").unwrap();
     for _ in 0..n {
         for variant in [Variant::Grand, Variant::Clubs, Variant::Spades, Variant::Hearts, Variant::Diamonds] {
-
             for current_player in [Player::One, Player::Two, Player::Three] {
-
                 let mut numbers: Vec<u32> = (0..32).collect();
                 numbers.shuffle(&mut rng);
                 let (first, rest) = numbers.split_at(amount);
@@ -42,7 +39,11 @@ fn create_n_cards(n: usize, amount: usize) {
 
                 let local_state = LState::new(BitCards(p1 | p2 | p3), current_player);
                 let global_state = GlobalState::new((BitCards(p1), BitCards(p2), BitCards(p3)), BitCards(0), Player::One, variant);
-                let result = ab(local_state, &global_state, 0, 120).0;
+                let mut solver = DefaultSolver {
+                    global_state,
+                    look_up_table: Default::default(),
+                };
+                let result = solver.solve(local_state);
                 let current_player = current_player as u8;
                 let variant = variant as u8;
 

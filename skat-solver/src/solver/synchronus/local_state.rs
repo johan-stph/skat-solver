@@ -2,15 +2,22 @@ use arrayvec::ArrayVec;
 use crate::solver::bitboard::{BitCard, BitCards, calculate_who_won_better, EMPTY_CARD};
 use crate::solver::{calculate_current_suit_mask, calculate_next_moves, calculate_winner, GlobalState, Player};
 
+pub struct LStateAdvanced {
+    pos: u64 // (30 bit remaining_cards + 2 bit current_player) + 32 bit current_suit
+}
+
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct LState {
-    pub remaining_cards: BitCards,
+    pub remaining_cards: BitCards, // 30 bit
+    pub current_player: Player, //2 bit
+
+
+
     // 30 bit
-    pub current_played_cards: (BitCard, BitCard),
-    // 0 bit
-    pub current_player: Player,
+    pub current_played_cards: (BitCard, BitCard), //could be stored in 32 bit or 0 if i and with all_cards
     //2 bits
-    pub current_suit: Option<BitCards>,
+    pub current_suit: Option<BitCards>, // 0-5 -> 32 bit or 3bit
 }
 
 impl LState {

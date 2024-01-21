@@ -147,7 +147,7 @@ pub(crate) fn calculate_next_moves(current_cards: BitCards, suit_mask: Option<Bi
 mod tests {
     use crate::solver::bitboard::{HEARTS_ASS, HEARTS_EIGHT, HEARTS_JACK, HEARTS_KING, HEARTS_NINE, HEARTS_QUEEN, HEARTS_SEVEN, HEARTS_TEN, KARO_ASS, KARO_EIGHT, KARO_JACK, KARO_KING, KARO_NINE, KARO_QUEEN, KARO_SEVEN, KARO_TEN, KREUZ_ASS, KREUZ_EIGHT, KREUZ_JACK, KREUZ_KING, KREUZ_NINE, KREUZ_QUEEN, KREUZ_SEVEN, KREUZ_TEN, PIQUS_ASS, PIQUS_EIGHT, PIQUS_JACK, PIQUS_KING, PIQUS_NINE, PIQUS_QUEEN, PIQUS_SEVEN, PIQUS_TEN};
     use crate::solver::{GlobalState, Player, Variant};
-    use crate::solver::synchronus::ab_tt::EnhancedSolver;
+    use crate::solver::synchronus::ab_tt_optimized::EnhancedSolver;
     use crate::solver::synchronus::local_state::LState;
 
     #[test]
@@ -171,14 +171,12 @@ mod tests {
             Variant::Grand,
         );
         let local_state = LState::new(player_one | player_two | player_three, Player::One);
-        let skatpoints = global_state.skat_points as i8;
         let mut solver = EnhancedSolver {
             global_state,
             look_up_table: Default::default(),
         };
-        //let result = solver.minimax_with_alpha_beta_tt(local_state, 0, 120);
-        let other_score = solver.ab_tt(local_state, 0, 120);
-        assert_eq!(skatpoints + other_score, 29)
+        let other_score = solver.solve(local_state);
+        assert_eq!(other_score, 29)
     }
 
     #[test]
@@ -210,8 +208,8 @@ mod tests {
             look_up_table: Default::default(),
         };
 
-        let result = solver.ab_tt(local_state, 0, 120);
-        assert_eq!(result + skat_points as i8, 63)
+        let result = solver.solve(local_state);
+        assert_eq!(result, 63)
     }
 }
 
