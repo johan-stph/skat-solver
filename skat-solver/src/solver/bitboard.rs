@@ -220,11 +220,11 @@ impl BitCard {
         KARO_MASK
     }
     pub(crate) fn get_point(&self) -> u8 {
-        if self.0 & GRAND_MASK != 0 {
-            return 2
-        }
         if self.0 & SEVEN_OR_EIGHT_OR_NINE != 0 {
             return 0
+        }
+        if self.0 & GRAND_MASK != 0 {
+            return 2
         }
         if self.0 & TEN_MASK != 0 {
             return 10
@@ -235,10 +235,8 @@ impl BitCard {
         if self.0 & KING_MASK != 0 {
             return 4
         }
-        if self.0 & ACE_MASK != 0 {
-            return 11
-        }
-        panic!("Should not happen")
+        //Ace mask
+        11
     }
 
     pub fn greater_than(&self, other: BitCard, variant: &Variant) -> bool {

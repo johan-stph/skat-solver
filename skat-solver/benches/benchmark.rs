@@ -23,13 +23,9 @@ fn parse_line(line: &str) -> (LState, GlobalState, u8) {
 
 fn run_test_normal(line: &str) -> Result<(), (u8, u8)> {
     let (local_state, global_state, score) = parse_line(line);
-    let mut solver = DefaultSolver {
-        global_state,
-        look_up_table: Default::default(),
-    };
+    let mut solver = EnhancedSolver::new(global_state);
     let result = solver.solve(local_state);
     assert!((0..=120).contains(&result));
-    let result = result as u8;
     if result == score {
         return Ok(());
     }
@@ -41,7 +37,6 @@ fn run_test_enhanced(line: &str) -> Result<(), (u8, u8)> {
     let mut solver = EnhancedSolver::new(global_state);
     let result = solver.solve(local_state);
     assert!((0..=120).contains(&result));
-    let result = result as u8;
     if result == score {
         return Ok(());
     }

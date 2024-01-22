@@ -19,13 +19,11 @@ pub struct DefaultSolver {
 
 
 impl DefaultSolver {
-
-
     pub fn solve(&mut self, local_state: LState) -> i8 {
         self.ab_tt(local_state, 0, 120) + self.global_state.skat_points as i8
     }
 
-    
+
     fn try_insert(&mut self, local_state: &LState, score: i8, bound: Bounds) {
         if local_state.is_full_node() {
             self.look_up_table.insert(local_state.get_hash(), (score, bound));
@@ -42,7 +40,7 @@ impl DefaultSolver {
             if let Some(result) = self.look_up_table.get(&local_state.get_hash()) {
                 match result.1 {
                     Valid => {
-                        return result.0
+                        return result.0;
                     }
                     LowerBound => {
                         new_alpha = max(new_alpha, result.0)
@@ -52,57 +50,57 @@ impl DefaultSolver {
                     }
                 }
                 if new_alpha >= new_beta {
-                    return result.0
+                    return result.0;
                 }
             }
         }
-        let mut result;
-        if local_state.is_max_node(&self.global_state) {
-            result = new_alpha;
-        } else {
-            result = new_beta;
-        }
-        for (next_state, achieved_points) in local_state.get_next_states(&self.global_state) {
+        let mut changed = false;
+        for (next_state, _ , achieved_points) in local_state.get_next_states(&self.global_state) {
             let t_q = achieved_points as i8;
+            let succ_val = t_q + self.ab_tt(next_state, new_alpha - t_q, new_beta - t_q);
             if local_state.is_max_node(&self.global_state) {
-                let succ_val= t_q +
-                    self.ab_tt(next_state, result - t_q, new_beta - t_q);
-                result = max(result, succ_val);
-                if result >= new_beta {
-                    self.try_insert(&local_state, result, LowerBound);
-                    return result
+                if succ_val > new_alpha {
+                    changed = true;
+                    new_alpha = succ_val;
+                }
+                //result = max(result, succ_val);
+                if new_alpha >= new_beta {
+                    self.try_insert(&local_state, new_alpha, LowerBound);
+                    return new_alpha;
                 }
             } else {
-                let succ_val = t_q + self.ab_tt(next_state, new_alpha - t_q, result - t_q);
-                result = min(result, succ_val);
-                result = min(result, succ_val);
-                if result <= new_alpha {
-                    self.try_insert(&local_state, result, UpperBound);
-                    return result
+                //result = min(result, succ_val);
+                if succ_val < new_beta {
+                    changed = true;
+                    new_beta = succ_val;
+                }
+                if new_beta <= new_alpha {
+                    self.try_insert(&local_state, new_beta, UpperBound);
+                    return new_beta;
                 }
             }
         }
+
+        let result = if local_state.is_max_node(&self.global_state) {
+            new_alpha
+        } else {
+            new_beta
+        };
         if !local_state.is_full_node() {
             return result;
         }
-        if local_state.is_max_node(&self.global_state) {
-            if result != agoof {
-                self.look_up_table.insert(local_state.get_hash(), (result, Valid));
-            }
-            else {
-                self.look_up_table.insert(local_state.get_hash(), (result, UpperBound));
-            }
-        } else if result != bgoof {
+        if changed {
             self.look_up_table.insert(local_state.get_hash(), (result, Valid));
+            return result;
         }
-        else {
+        if local_state.is_max_node(&self.global_state) {
+            self.look_up_table.insert(local_state.get_hash(), (result, UpperBound));
+        } else {
             self.look_up_table.insert(local_state.get_hash(), (result, LowerBound));
         }
         result
     }
 }
-
-
 
 
 #[cfg(test)]
@@ -118,7 +116,7 @@ mod tests {
         let player_one = KREUZ_JACK | KREUZ_TEN
             | HEARTS_TEN | HEARTS_KING | HEARTS_EIGHT | PIQUS_KING | PIQUS_SEVEN;
         let player_two = PIQUS_JACK | HEARTS_JACK | KREUZ_EIGHT | KARO_ASS | KARO_TEN | KARO_QUEEN | KARO_NINE;
-        let player_three = KREUZ_QUEEN | KREUZ_SEVEN | HEARTS_ASS | HEARTS_SEVEN | PIQUS_NINE | PIQUS_EIGHT| KARO_SEVEN;
+        let player_three = KREUZ_QUEEN | KREUZ_SEVEN | HEARTS_ASS | HEARTS_SEVEN | PIQUS_NINE | PIQUS_EIGHT | KARO_SEVEN;
         let all_cards = player_one | player_two | player_three;
         assert_eq!(all_cards.0.count_ones(), 21);
         assert_eq!(player_one & player_two & player_three, BitCards(0));
@@ -173,13 +171,12 @@ mod tests {
     }
 
 
-
     fn run_test(line: &str) -> Result<(), (u8, u8)> {
         let data: Vec<&str> = line.split(',').collect();
         let p1 = BitCards(data[0].parse::<u32>().unwrap());
         let p2 = BitCards(data[1].parse::<u32>().unwrap());
         let p3 = BitCards(data[2].parse::<u32>().unwrap());
-        let skat= BitCards(data[3].parse::<u32>().unwrap());
+        let skat = BitCards(data[3].parse::<u32>().unwrap());
         let current_player: Player = Player::from(data[4].parse::<u8>().unwrap());
         let variant: Variant = Variant::from(data[5].parse::<u8>().unwrap());
         let score = data[6].parse::<u8>().unwrap();
@@ -206,10 +203,11 @@ mod tests {
 
         for line in input.lines() {
             let result = run_test(line);
-            if let Ok(()) = result { successes +=1 }
+            if let Ok(()) = result { successes += 1 }
         }
         assert_eq!(successes, len);
     }
+
     #[test]
     fn ab_tt_normal_seven_cards() {
         let input = fs::read_to_string("data/seven_cards.txt").unwrap();
@@ -218,10 +216,11 @@ mod tests {
 
         for line in input.lines() {
             let result = run_test(line);
-            if let Ok(()) = result { successes +=1 }
+            if let Ok(()) = result { successes += 1 }
         }
         assert_eq!(successes, len);
     }
+
     #[test]
     fn ab_tt_normal_five_cards() {
         let input = fs::read_to_string("data/five_cards.txt").unwrap();
@@ -230,10 +229,11 @@ mod tests {
 
         for line in input.lines() {
             let result = run_test(line);
-            if let Ok(()) = result { successes +=1 }
+            if let Ok(()) = result { successes += 1 }
         }
         assert_eq!(successes, len);
     }
+
     #[test]
     fn ab_tt_normal_six_cards() {
         let input = fs::read_to_string("data/six_cards.txt").unwrap();
@@ -242,7 +242,7 @@ mod tests {
 
         for line in input.lines() {
             let result = run_test(line);
-            if let Ok(()) = result { successes +=1 }
+            if let Ok(()) = result { successes += 1 }
         }
         assert_eq!(successes, len);
     }
@@ -255,7 +255,7 @@ mod tests {
 
         for line in input.lines() {
             let result = run_test(line);
-            if let Ok(()) = result { successes +=1 }
+            if let Ok(()) = result { successes += 1 }
         }
         assert_eq!(successes, len);
     }
@@ -268,7 +268,7 @@ mod tests {
 
         for line in input.lines() {
             let result = run_test(line);
-            if let Ok(()) = result { successes +=1 }
+            if let Ok(()) = result { successes += 1 }
         }
         assert_eq!(successes, len);
     }
@@ -281,7 +281,7 @@ mod tests {
 
         for line in input.lines() {
             let result = run_test(line);
-            if let Ok(()) = result { successes +=1 }
+            if let Ok(()) = result { successes += 1 }
         }
         assert_eq!(successes, len);
     }
