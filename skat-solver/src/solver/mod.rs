@@ -4,9 +4,10 @@ use crate::solver::Variant::{Clubs, Diamonds, Grand, Hearts, Spades};
 mod concurrent;
 pub mod synchronus;
 pub mod bitboard;
+mod bitstates;
 
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Variant {
     Grand,
     Clubs,

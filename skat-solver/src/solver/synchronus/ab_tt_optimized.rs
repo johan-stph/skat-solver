@@ -82,37 +82,36 @@ impl EnhancedSolver {
                 }
             }
         }
-        let mut result;
-        if local_state.is_max_node(&self.global_state) {
-            result = new_alpha;
-        } else {
-            result = new_beta;
-        }
+
+        let is_max = local_state.is_max_node(&self.global_state);
         for (next_state, _ , achieved_points) in local_state.get_next_states(&self.global_state) {
             let t_q = achieved_points as i8;
-            if local_state.is_max_node(&self.global_state) {
-                let succ_val= t_q +
-                    self.ab_tt(next_state, result - t_q, new_beta - t_q);
-
-                result = max(result, succ_val);
-                if result >= new_beta {
-                    self.try_insert(&local_state, result, LowerBound);
-                    return result
+            let succ_val= t_q + self.ab_tt(next_state, new_alpha - t_q, new_beta - t_q);
+            if is_max {
+                new_alpha = max(new_alpha, succ_val);
+                if new_alpha >= new_beta {
+                    self.try_insert(&local_state, new_alpha, LowerBound);
+                    return new_alpha
                 }
             } else {
-                let succ_val = t_q + self.ab_tt(next_state, new_alpha - t_q, result - t_q);
-                result = min(result, succ_val);
-                if result <= new_alpha {
-                    self.try_insert(&local_state, result, UpperBound);
-                    return result
+                new_beta = min(new_beta, succ_val);
+                if new_beta <= new_alpha {
+                    self.try_insert(&local_state, new_beta, UpperBound);
+                    return new_beta
                 }
             }
         }
+
+        let result = if is_max {
+            new_alpha
+        } else {
+            new_beta
+        };
         if !local_state.is_full_node() {
             return result;
         }
-        if local_state.is_max_node(&self.global_state) {
-            if result != agoof {
+        if is_max {
+            if new_alpha != agoof {
                 self.insert(local_state.get_hash_better(&self.global_state), result, Valid);
             }
             else {

@@ -1,8 +1,7 @@
 use std::fs;
-use criterion::{Criterion, criterion_group, criterion_main, SamplingMode};
+use criterion::{Criterion, criterion_group, criterion_main};
 use skat_solver::solver::bitboard::BitCards;
 use skat_solver::solver::{GlobalState, Player, Variant};
-use skat_solver::solver::synchronus::ab_tt::DefaultSolver;
 use skat_solver::solver::synchronus::ab_tt_optimized::EnhancedSolver;
 use skat_solver::solver::synchronus::local_state::LState;
 
@@ -77,8 +76,8 @@ pub fn criterion_benchmark(_: &mut Criterion) {
     let mut c = Criterion::default().sample_size(10);
     let mut group = c.benchmark_group("ab_tt");
     //group.sampling_mode(SamplingMode::Flat);
-    group.bench_function("7 moves", |b| b.iter(ab_tt_normal_seven_cards));
-    //group.bench_function("10 moves enhanced", |b| b.iter(ab_tt_enhanced_ten_cards));
+    //group.bench_function("7 moves", |b| b.iter(ab_tt_normal_seven_cards));
+    group.bench_function("10 moves enhanced", |b| b.iter(ab_tt_enhanced_ten_cards));
     group.finish();
 }
 
