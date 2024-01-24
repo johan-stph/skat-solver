@@ -2,18 +2,11 @@ use arrayvec::ArrayVec;
 use crate::solver::bitboard::{BitCard, BitCards, calculate_who_won_better, EMPTY_CARD};
 use crate::solver::{calculate_current_suit_mask, calculate_next_moves, calculate_winner, GlobalState, Player};
 
-pub struct LStateAdvanced {
-    pos: u64 // (30 bit remaining_cards + 2 bit current_player) + 32 bit current_suit
-}
-
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct LState {
     pub remaining_cards: BitCards, // 30 bit
     pub current_player: Player, //2 bit
-
-
-
     // 30 bit
     pub current_played_cards: (BitCard, BitCard), //could be stored in 32 bit or 0 if i and with all_cards
     //2 bits
@@ -80,8 +73,8 @@ impl LState {
     }
 
     #[inline(always)]
-    pub(crate) fn get_next_states(&self, global_state: &GlobalState) -> ArrayVec<(LState, u8), 10> {
-        let mut next_states: ArrayVec<(LState, u8), 10> = ArrayVec::new();
+    pub(crate) fn get_next_states(&self, global_state: &GlobalState) -> ArrayVec<(LState, u8, u8), 10>{
+        let mut move_sorter = MoveSorter::new();
         //get available cards
         let available = self.get_available(self.current_player, global_state);
         let possible_moves: BitCards = calculate_next_moves(available, self.current_suit);
@@ -90,24 +83,22 @@ impl LState {
             let remaining_cards = BitCards(self.remaining_cards.0 & (!next_move.0));
             match self.current_played_cards {
                 (BitCard(0), BitCard(0)) => unsafe {
-                    next_states.push_unchecked(
-                        (LState {
+                    move_sorter.add(
+                        LState {
                             remaining_cards,
                             current_played_cards: (next_move, EMPTY_CARD),
                             current_player: next_player,
                             current_suit: Some(calculate_current_suit_mask(next_move, &global_state.variant)),
-                        }, 0)
-                    );
+                        }, next_move.get_point(),0)
                 }
                 (_, BitCard(0)) => unsafe {
-                    next_states.push_unchecked(
-                        (LState {
+                    move_sorter.add(
+                        LState {
                             remaining_cards,
                             current_played_cards: (self.current_played_cards.0, next_move),
                             current_player: next_player,
                             current_suit: self.current_suit,
-                        }, 0)
-                    )
+                        }, self.current_played_cards.0.get_point() + next_move.get_point() , 0);
                 }
                 (_, _) => unsafe {
                     let winner_card = calculate_who_won_better(self.current_played_cards.0, self.current_played_cards.1, next_move, &global_state.variant);
@@ -118,18 +109,48 @@ impl LState {
                     } else {
                         0
                     };
-                    next_states.push_unchecked(
-                        (LState {
+                    move_sorter.add(
+                        LState {
                             remaining_cards,
                             current_played_cards: (EMPTY_CARD, EMPTY_CARD),
                             current_player: winner_player,
                             current_suit: None,
-                        }, winner_points)
+                        }, winner_points, winner_points
                     );
                 }
             };
         }
-        next_states
+        move_sorter.sort();
+        move_sorter.entries
+    }
+
+}
+
+pub struct MoveSorter {
+    //STATE, expected, real (or 0)
+    entries: ArrayVec<(LState, u8, u8), 10>,
+}
+
+impl MoveSorter {
+    pub fn new() -> MoveSorter {
+        MoveSorter {
+            entries: ArrayVec::new(),
+        }
+    }
+
+    pub unsafe fn add(&mut self, move_: LState, score: u8, real: u8) {
+        self.entries.push_unchecked((move_, score, real))
+    }
+    pub fn sort(&mut self) {
+        self.entries.sort_by(
+            |a , b| {
+                //can be left out and just do the normal comparison
+                if a.0.is_full_node() {
+                    return b.2.cmp(&a.2)
+                }
+                b.1.cmp(&a.1)
+            }
+        )
     }
 }
 

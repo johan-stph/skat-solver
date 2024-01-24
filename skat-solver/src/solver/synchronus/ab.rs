@@ -8,7 +8,7 @@ pub fn ab(local_state: LState, global_state: &GlobalState, alpha: i8, beta: i8) 
     let mut optimal_move: Option<LState> = None;
     let mut new_alpha = alpha;
     let mut new_beta = beta;
-    for (next_state, achieved_points) in local_state.get_next_states(global_state) {
+    for (next_state, _ , achieved_points) in local_state.get_next_states(&global_state) {
         let achieved = achieved_points as i8;
         let poss_alpha_or_beta = achieved + ab(next_state,
                                                global_state,

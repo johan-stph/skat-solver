@@ -1,12 +1,13 @@
 use crate::solver::bitboard::{BitCard, BitCards, GRAND_MASK, HEARTS_MASK, KARO_MASK};
 use crate::solver::Variant::{Clubs, Diamonds, Grand, Hearts, Spades};
 
-mod concurrent;
+pub mod concurrent;
 pub mod synchronus;
 pub mod bitboard;
+pub mod bitstates;
 
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Variant {
     Grand,
     Clubs,
@@ -171,10 +172,7 @@ mod tests {
             Variant::Grand,
         );
         let local_state = LState::new(player_one | player_two | player_three, Player::One);
-        let mut solver = EnhancedSolver {
-            global_state,
-            look_up_table: Default::default(),
-        };
+        let mut solver = EnhancedSolver::new(global_state);
         let other_score = solver.solve(local_state);
         assert_eq!(other_score, 29)
     }
@@ -202,11 +200,8 @@ mod tests {
             Variant::Grand,
         );
         let local_state = LState::new(all, Player::One);
-        let skat_points = global_state.skat_points;
-        let mut solver = EnhancedSolver {
-            global_state,
-            look_up_table: Default::default(),
-        };
+        //let skat_points = global_state.skat_points;
+        let mut solver = EnhancedSolver::new(global_state);
 
         let result = solver.solve(local_state);
         assert_eq!(result, 63)

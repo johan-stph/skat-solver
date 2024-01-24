@@ -1,52 +1,30 @@
 use std::fs;
-use criterion::{Criterion, criterion_group, criterion_main, SamplingMode};
+use criterion::{Criterion, criterion_group, criterion_main};
 use skat_solver::solver::bitboard::BitCards;
-use skat_solver::solver::{GlobalState, Player, Variant};
-use skat_solver::solver::synchronus::ab_tt::DefaultSolver;
-use skat_solver::solver::synchronus::ab_tt_optimized::EnhancedSolver;
-use skat_solver::solver::synchronus::local_state::LState;
+use skat_solver::solver::{Player, Variant};
+use skat_solver::solver::bitstates::{BitGlobal, BitLocal};
+use skat_solver::solver::concurrent::lazy_smp::LazyMoreEnhancedSolver;
 
 
-fn parse_line(line: &str) -> (LState, GlobalState, u8) {
+fn run_test(line: &str) -> Result<(), (u8, u8)> {
     let data: Vec<&str> = line.split(',').collect();
     let p1 = BitCards(data[0].parse::<u32>().unwrap());
     let p2 = BitCards(data[1].parse::<u32>().unwrap());
     let p3 = BitCards(data[2].parse::<u32>().unwrap());
-    let skat= BitCards(data[3].parse::<u32>().unwrap());
     let current_player: Player = Player::from(data[4].parse::<u8>().unwrap());
     let variant: Variant = Variant::from(data[5].parse::<u8>().unwrap());
     let score = data[6].parse::<u8>().unwrap();
-    let local_state = LState::new(p1 | p2 | p3, current_player);
-    let global_state = GlobalState::new((p1, p2, p3), skat, Player::One, variant);
-    (local_state, global_state, score)
-}
-
-fn run_test_normal(line: &str) -> Result<(), (u8, u8)> {
-    let (local_state, global_state, score) = parse_line(line);
-    let mut solver = DefaultSolver {
-        global_state,
-        look_up_table: Default::default(),
-    };
+    let global_state = BitGlobal::new(p1, p2, p3, variant);
+    let local_state = BitLocal::new((p1 | p2 | p3).0, current_player, global_state.skat);
+    let mut solver = LazyMoreEnhancedSolver::new(global_state);
     let result = solver.solve(local_state);
     assert!((0..=120).contains(&result));
-    let result = result as u8;
     if result == score {
         return Ok(());
     }
     Err((result, score))
 }
 
-fn run_test_enhanced(line: &str) -> Result<(), (u8, u8)> {
-    let (local_state, global_state, score) = parse_line(line);
-    let mut solver = EnhancedSolver::new(global_state);
-    let result = solver.solve(local_state);
-    assert!((0..=120).contains(&result));
-    let result = result as u8;
-    if result == score {
-        return Ok(());
-    }
-    Err((result, score))
-}
 
 
 
@@ -56,7 +34,7 @@ fn ab_tt_normal_seven_cards() {
     let mut successes = 0;
 
     for line in input.lines() {
-        let result = run_test_normal(line);
+        let result = run_test(line);
         if let Ok(()) = result { successes +=1 }
     }
     assert_eq!(successes, len);
@@ -68,7 +46,7 @@ fn ab_tt_enhanced_ten_cards() {
     let mut successes = 0;
 
     for line in input.lines() {
-        let result = run_test_enhanced(line);
+        let result = run_test(line);
         if let Ok(()) = result { successes +=1 }
     }
     assert_eq!(successes, len);
