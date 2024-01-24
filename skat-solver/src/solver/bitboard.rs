@@ -18,7 +18,7 @@ const SEVEN_MASK: u32 = get_binary_mask_for_rank(1);
 const EIGHT_MASK: u32 = get_binary_mask_for_rank(2);
 const NINE_MASK: u32 = get_binary_mask_for_rank(3);
 
-const SEVEN_OR_EIGHT_OR_NINE: u32 = SEVEN_MASK | EIGHT_MASK | NINE_MASK;
+pub(crate) const SEVEN_OR_EIGHT_OR_NINE: u32 = SEVEN_MASK | EIGHT_MASK | NINE_MASK;
 const QUEEN_MASK: u32 = get_binary_mask_for_rank(4);
 const KING_MASK: u32 = get_binary_mask_for_rank(5);
 const TEN_MASK: u32 = get_binary_mask_for_rank(6);

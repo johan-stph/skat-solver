@@ -1,5 +1,5 @@
 use arrayvec::ArrayVec;
-use crate::solver::bitboard::{BitCard, BitCards, calculate_who_won_better, GRAND_MASK, HEARTS_MASK, KARO_MASK, KREUZ_MASK, PIQUS_MASK};
+use crate::solver::bitboard::{BitCard, BitCards, calculate_who_won_better, GRAND_MASK, HEARTS_MASK, KARO_MASK, KREUZ_MASK, PIQUS_MASK, SEVEN_OR_EIGHT_OR_NINE};
 use crate::solver::{Player, Variant};
 
 ///
@@ -42,10 +42,19 @@ const fn generate_color_mask(variant: Variant) -> [u32; 5] {
 
 impl BitGlobal {
     pub fn new(pl_one: BitCards, pl_two: BitCards, pl_three: BitCards, variant: Variant) -> BitGlobal {
-        let skat = BitCards(!(pl_one | pl_two | pl_three).0);
+        let mut skat = BitCards(!(pl_one | pl_two | pl_three).0);
         let first_card = skat.get_next_card_in_binary().0;
-        let second_card = skat.0 & !first_card;
-        let skat_points = skat.get_cards_points();
+        let second_card;
+        let skat_points;
+        if (pl_one | pl_two | pl_three).0.count_zeros() != 2 {
+            //create custom skatl
+            second_card = BitCards(skat.0 & (!first_card)).get_next_card_in_binary().0;
+            skat = BitCards(first_card | second_card);
+            skat_points = 0;
+        } else {
+            second_card = skat.0 & !first_card;
+            skat_points = skat.get_cards_points();
+        }
         let color_masks = generate_color_mask(variant);
         BitGlobal {
             player_one: pl_one,
@@ -82,7 +91,7 @@ impl BitGlobal {
 ///     pl 1. 00
 ///     pl 2. 01
 ///     pl 3. 11
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, )]
 pub struct BitLocal {
     //current_player, only with knowledge of skat
     //remaining_cards
@@ -92,8 +101,7 @@ pub struct BitLocal {
 }
 
 impl BitLocal {
-    pub fn new(all_cards: u32, current_player: Player) -> BitLocal {
-        let skat = BitCards(!all_cards);
+    pub fn new(all_cards: u32, current_player: Player, skat: BitCards) -> BitLocal {
         let next = skat.get_next_card_in_binary();
         match current_player {
             Player::One => {
@@ -124,6 +132,10 @@ impl BitLocal {
 
 impl BitLocal {
 
+    pub fn get_remaining_points(&self, global_state: &BitGlobal) -> u8 {
+        BitCards(self.state & !global_state.skat.0).get_cards_points()
+    }
+
     #[inline(always)]
     pub fn is_max_node(&self, global_state: &BitGlobal) -> bool {
         self.state & global_state.skat.0 == 0
@@ -139,7 +151,11 @@ impl BitLocal {
 
     #[inline(always)]
     pub fn is_terminal(&self, skat: BitCards) -> bool {
-        (self.state & (!skat.0)) == 0
+        let mut cards = self.state & (!skat.0);
+        if self.is_full_node() {
+            cards &= !SEVEN_OR_EIGHT_OR_NINE;
+        }
+        cards == 0
     }
 
     #[inline(always)]

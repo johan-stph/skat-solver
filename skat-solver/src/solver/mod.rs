@@ -1,10 +1,10 @@
 use crate::solver::bitboard::{BitCard, BitCards, GRAND_MASK, HEARTS_MASK, KARO_MASK};
 use crate::solver::Variant::{Clubs, Diamonds, Grand, Hearts, Spades};
 
-mod concurrent;
+pub mod concurrent;
 pub mod synchronus;
 pub mod bitboard;
-mod bitstates;
+pub mod bitstates;
 
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -200,7 +200,7 @@ mod tests {
             Variant::Grand,
         );
         let local_state = LState::new(all, Player::One);
-        let skat_points = global_state.skat_points;
+        //let skat_points = global_state.skat_points;
         let mut solver = EnhancedSolver::new(global_state);
 
         let result = solver.solve(local_state);

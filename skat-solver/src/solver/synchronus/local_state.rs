@@ -2,10 +2,6 @@ use arrayvec::ArrayVec;
 use crate::solver::bitboard::{BitCard, BitCards, calculate_who_won_better, EMPTY_CARD};
 use crate::solver::{calculate_current_suit_mask, calculate_next_moves, calculate_winner, GlobalState, Player};
 
-pub struct LStateAdvanced {
-    pos: u64 // (30 bit remaining_cards + 2 bit current_player) + 32 bit current_suit
-}
-
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct LState {

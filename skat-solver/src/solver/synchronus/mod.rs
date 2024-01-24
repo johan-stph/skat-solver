@@ -6,4 +6,4 @@ pub mod ab_tt;
 pub mod local_state;
 pub mod ab_tt_optimized;
 mod trans_table;
-mod ab_tt_bitstates;
+pub(crate) mod ab_tt_bitstates;
